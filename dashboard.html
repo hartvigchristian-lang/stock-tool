@@ -1,0 +1,1251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --up: #006300;
+  --down: #d03b3b;
+  --warn-bg: #fff6e0;
+  --wash: rgba(11,11,11,0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --text: #f0efec;
+    --text-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --up: #0ca30c;
+    --down: #e66767;
+    --warn-bg: #2e2510;
+    --wash: rgba(255,255,255,0.05);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --text: #f0efec; --text-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --series-1: #3987e5; --series-2: #d95926; --up: #0ca30c; --down: #e66767;
+  --warn-bg: #2e2510; --wash: rgba(255,255,255,0.05);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 20px; }
+h1 { font-size: 22px; margin: 0; font-weight: 650; }
+h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; }
+.meta { color: var(--text-2); font-size: 13px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--up); display: inline-block; margin-right: 6px; }
+.dot.stale { background: var(--muted); }
+button { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.pw-overlay { position: fixed; inset: 0; background: var(--page); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.pw-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: min(360px, 100%); display: grid; gap: 12px; }
+.pw-box h2 { margin: 0; }
+.pw-box p { margin: 0; color: var(--muted, inherit); }
+.pw-box input[type=password] { font: inherit; font-size: 16px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--page); color: var(--text); }
+.pw-box label { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.pw-box button { padding: 10px; font-weight: 600; }
+#pf { font: inherit; font-size: 15px; font-weight: 600; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; cursor: pointer; }
+button:hover { background: var(--wash); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.kpi .label { color: var(--text-2); font-size: 13px; }
+.kpi .value { font-size: 26px; font-weight: 650; margin-top: 4px; }
+.kpi .sub { font-size: 13px; margin-top: 2px; color: var(--text-2); }
+.up { color: var(--up); } .down { color: var(--down); }
+.grid2 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; margin-bottom: 12px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .kpis { grid-template-columns: 1fr 1fr; gap: 8px; } .kpis > :last-child { grid-column: 1 / -1; } .kpis .value { font-size: 22px; } main { padding-left: 16px; padding-right: 16px; } }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-2); margin: -4px 0 8px; }
+.swatch { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.chart { position: relative; }
+svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); white-space: nowrap; display: none; z-index: 2; }
+.tip b { font-weight: 600; }
+.tip .row { display: flex; justify-content: space-between; gap: 16px; }
+.alloc-row { display: grid; grid-template-columns: 120px 1fr 52px; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; cursor: default; }
+.alloc-row:hover { background: var(--wash); border-radius: 6px; }
+.alloc-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.alloc-row .bar { height: 14px; background: var(--series-1); border-radius: 0 4px 4px 0; min-width: 2px; }
+.alloc-row .pct { text-align: right; font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--grid); }
+th { font-weight: 500; color: var(--text-2); font-size: 12px; cursor: pointer; user-select: none; }
+th:hover { color: var(--text); }
+th:first-child, td:first-child { text-align: left; }
+td .sym { color: var(--muted); font-size: 12px; display: block; }
+tbody tr:hover { background: var(--wash); }
+tfoot td { font-weight: 600; border-bottom: none; }
+.flash-up { animation: fu 1.2s; } .flash-down { animation: fd 1.2s; }
+@keyframes fu { from { background: rgba(12,163,12,.25); } }
+@keyframes fd { from { background: rgba(208,59,59,.25); } }
+.warn { background: var(--warn-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; }
+.warn ul { margin: 4px 0 0; padding-left: 18px; }
+details summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+.foot { color: var(--muted); font-size: 12px; margin-top: 16px; }
+.err { color: var(--down); }
+.lot-toggle { border: none; background: none; padding: 0 6px 0 0; font-size: 15px; line-height: 1; color: var(--series-1); cursor: pointer; }
+.lot-toggle:hover { color: var(--text); background: none; }
+tr.lots > td { padding: 0 10px 10px 34px; background: var(--wash); }
+table.lot-table { width: max-content; font-size: 12px; }
+table.lot-table th, table.lot-table td { padding: 5px 10px; border-bottom: 1px solid var(--grid); }
+table.lot-table th { cursor: default; }
+table.lot-table tr.sold td { opacity: .45; }
+table.lot-table tr:last-child td { border-bottom: none; }
+tr.excluded td:not(:first-child) { opacity: .4; }
+#holdings th:nth-child(2), #holdings td:nth-child(2) { text-align: left; }
+#holdings th:first-child, #holdings td:first-child { width: 1%; padding-right: 0; }
+input.incl { width: 15px; height: 15px; cursor: pointer; accent-color: var(--series-1); }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
+.badge.bull { color: var(--up); } .badge.bear { color: var(--down); } .badge.neutral { color: var(--text-2); }
+#signals td { vertical-align: top; }
+#levels tr:not(.why-row) td { border-bottom: none; padding-bottom: 2px; }
+#levels .why { text-align: left; white-space: normal; font-size: 12px; color: var(--text-2); padding-top: 0; }
+#levels tbody tr:hover { background: none; }
+.why-in { position: sticky; left: 10px; max-width: calc(100vw - 90px); }
+@media (min-width: 1180px) { .why-in { max-width: 1090px; } }
+#levels .hit { font-weight: 650; }
+#cands tr:not(.why-row) td { border-bottom: none; padding-bottom: 2px; vertical-align: top; }
+#cands .why { text-align: left; white-space: normal; font-size: 12px; color: var(--text-2); padding-top: 0; }
+#cands tbody tr:hover { background: none; }
+#funds tr:not(.why-row) td { border-bottom: none; padding-bottom: 2px; vertical-align: top; }
+#funds .why { text-align: left; white-space: normal; font-size: 12px; color: var(--text-2); padding-top: 0; }
+#funds tbody tr:hover { background: none; }
+.gaps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.gaps .plan-stat div.list { font-size: 12px; color: var(--text-2); margin-top: 4px; line-height: 1.6; }
+#signals tr:not(.why-row) td { border-bottom: none; padding-bottom: 2px; }
+#signals .why { text-align: left; white-space: normal; font-size: 12px; color: var(--text-2); padding-top: 0; }
+#signals .why span { display: inline-block; margin-right: 14px; }
+#signals tbody tr:hover { background: none; }
+.range { position: relative; width: 120px; height: 14px; margin-top: 3px; }
+.range .track { position: absolute; top: 6px; left: 0; right: 0; height: 2px; background: var(--axis); border-radius: 1px; }
+.range .pt { position: absolute; top: 2px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--series-1); border: 2px solid var(--surface); }
+.badge.review { color: #b36b00; }
+:root[data-theme="dark"] .badge.review { color: #fab219; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .badge.review { color: #fab219; } }
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.plan-stat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.plan-stat .label { color: var(--text-2); font-size: 12px; }
+.plan-stat .v { font-size: 18px; font-weight: 650; margin-top: 2px; }
+.plan-stat .sub { font-size: 12px; color: var(--text-2); }
+.plan-step { margin: 14px 0 6px; font-weight: 600; font-size: 14px; }
+.plan-item { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+.plan-item:last-child { border-bottom: none; }
+.plan-item .why { color: var(--text-2); }
+.plan-rules { font-size: 12px; color: var(--text-2); margin-top: 12px; }
+.plan-rules code { background: var(--wash); padding: 1px 5px; border-radius: 4px; }
+@media (max-width: 600px) { .plan-item { grid-template-columns: 1fr; } }
+.range-lbl { display: flex; justify-content: space-between; width: 120px; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <h1>Portfolio</h1>
+      <select id="pf" aria-label="Choose portfolio" style="display:none"></select>
+    </div>
+    <div class="meta">
+      <span id="status"><span class="dot stale"></span>Loading…</span>
+      <span id="source"></span>
+      <button id="refresh" title="Refresh now">Refresh</button>
+      <button id="theme" title="Toggle light/dark">◐</button>
+    </div>
+  </header>
+
+  <div id="warnings"></div>
+
+  <section class="kpis">
+    <div class="card kpi"><div class="label">Market value</div><div class="value" id="k-value">–</div><div class="sub" id="k-value-sub"></div></div>
+    <div class="card kpi"><div class="label">Today</div><div class="value" id="k-day">–</div><div class="sub" id="k-day-sub"></div></div>
+    <div class="card kpi"><div class="label">Unrealised P/L</div><div class="value" id="k-unreal">–</div><div class="sub" id="k-unreal-sub"></div></div>
+    <div class="card kpi"><div class="label">Realised + dividends</div><div class="value" id="k-real">–</div><div class="sub" id="k-real-sub"></div></div>
+    <div class="card kpi"><div class="label">Overall result</div><div class="value" id="k-total">–</div><div class="sub" id="k-total-sub"></div></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Value vs. cost basis</h2>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--series-1)"></span>Market value</span>
+        <span><span class="swatch" style="background:var(--series-2)"></span>Cost basis</span>
+      </div>
+      <div class="chart" id="history"><svg width="100%" height="260"></svg><div class="tip"></div></div>
+      <div class="foot" id="history-note"></div>
+    </div>
+    <div class="card">
+      <h2>Allocation</h2>
+      <div class="chart" id="alloc"></div>
+    </div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <h2>Holdings</h2>
+    <div class="table-wrap">
+      <table id="holdings">
+        <thead><tr>
+          <th title="Untick to leave a stock out of totals, charts and the plan">Incl.</th>
+          <th data-k="name">Security</th>
+          <th data-k="shares">Shares</th>
+          <th data-k="avg">Avg cost (DKK)</th>
+          <th data-k="avgNative" title="Average purchase price in the stock's own currency, excl. fees (foreign stocks only). ≈ = estimated from DKK cost at today's exchange rate">Avg cost (orig.)</th>
+          <th data-k="price">Price</th>
+          <th data-k="dayPct">Today</th>
+          <th>Intraday</th>
+          <th data-k="value">Value (DKK)</th>
+          <th data-k="pl">P/L (DKK)</th>
+          <th data-k="plPct">P/L %</th>
+          <th data-k="dividends" title="Total dividends received from this stock (DKK), and per share you hold now">Dividends</th>
+          <th data-k="planRank" style="text-align:left" title="Which of your rules apply (config.json → rules)">Plan</th>
+          <th data-k="consMean" style="text-align:left" title="Published analyst consensus (Yahoo Finance)">Analysts</th>
+        </tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px" id="plan">
+    <h2>Rebalancing plan</h2>
+    <div id="plan-body"></div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px" id="timing">
+    <h2>Price levels &amp; timing</h2>
+    <p class="foot" style="margin:-6px 0 10px">Take-profit steps, average-down zone and trailing-stop sell window for each stock, from the <code>timing</code> rules in config.json.
+      Prices are in each stock's own currency. Generic rules applied mechanically, not personal advice.</p>
+    <div class="table-wrap">
+      <table id="levels">
+        <thead><tr>
+          <th>Security</th><th>Price</th><th>Avg cost</th><th>Gain</th><th>Take profit at</th>
+          <th>Average-down zone</th><th>Trailing stop</th><th style="text-align:left">Now</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px" id="screen">
+    <h2>Screen: shares &amp; ETFs you don't own</h2>
+    <p class="foot" style="margin:-6px 0 10px">Large Danish companies plus your watchlist, ranked by the same mechanical checks the tool uses for your holdings:
+      analyst consensus and target, technical signal, and whether the sector fits your limits. A screen to research further, not a buy list or personal advice.</p>
+    <div id="gaps"></div>
+    <div class="table-wrap">
+      <table id="cands">
+        <thead><tr>
+          <th>#</th><th style="text-align:left">Company</th><th>Price</th><th style="text-align:left">Analysts</th>
+          <th style="text-align:left">Technical</th><th style="text-align:left">Sector fit</th><th>Score</th><th>Starter size</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="plan-rules" id="screen-foot"></p>
+    <h2 style="margin-top:22px">Funds (ETFs)</h2>
+    <div class="table-wrap">
+      <table id="funds">
+        <thead><tr>
+          <th>#</th><th style="text-align:left">Fund</th><th>Price</th><th>Fee / year</th><th>1-year</th>
+          <th title="Annualised volatility and the largest fall from a peak, last 3 years">Risk (3 yr)</th><th style="text-align:left">Morningstar</th>
+          <th style="text-align:left">Trend</th><th style="text-align:left">Fills a gap?</th><th>Score</th><th>Starter size</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="plan-rules" id="funds-foot"></p>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <h2>Technical signals</h2>
+    <p class="foot" style="margin:-6px 0 10px">Rule-based indicators on daily closes, combined into a score: trend vs. 50/200-day averages, MACD momentum, and RSI extremes. Score ≥ +2 is bullish, ≤ −2 is bearish.
+      These are mechanical signals, not investment advice.</p>
+    <div class="table-wrap">
+      <table id="signals">
+        <thead><tr>
+          <th>Security</th><th style="text-align:left">Signal</th><th>Score</th><th>RSI (14)</th>
+          <th>50-day</th><th>200-day</th><th style="text-align:left">52-week range</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Transactions</summary>
+      <div class="table-wrap" style="margin-top:12px">
+        <table id="txs"><thead><tr>
+          <th>Date</th><th>Security</th><th>Type</th><th>Qty</th><th>Price</th><th>Amount (DKK)</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </details>
+  </section>
+
+  <p class="foot">Runs locally on this Mac. Only ticker symbols are sent out, to Yahoo Finance for prices, which may be delayed by up to 15 minutes.
+    Cost basis uses the average-cost method, in DKK, including fees.</p>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const nf0 = new Intl.NumberFormat('da-DK', { maximumFractionDigits: 0 });
+const nf2 = new Intl.NumberFormat('da-DK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const kr = v => v == null ? '–' : nf0.format(v) + ' kr.';
+const signed = (v, f = nf0) => v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + f.format(Math.abs(v));
+const pct = v => v == null || !isFinite(v) ? '–' : signed(v * 100, nf2) + ' %';
+const cls = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
+const arrow = v => v > 0 ? '▲ ' : v < 0 ? '▼ ' : '';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let candidates = [], fundCandidates = [];
+let openLots = new Set();
+// Which portfolio (?p=<id>); each one keeps its own excluded/opened rows in this browser.
+const PF = new URLSearchParams(location.search).get('p') || 'main';
+const KEY = k => PF === 'main' ? k : `${k}:${PF}`;
+try { openLots = new Set(JSON.parse(localStorage.getItem(KEY('openLots')) || '[]')); } catch (e) {}
+let excluded = new Set();
+try { excluded = new Set(JSON.parse(localStorage.getItem(KEY('excluded')) || '[]')); } catch (e) {}
+function saveExcluded() { try { localStorage.setItem(KEY('excluded'), JSON.stringify([...excluded])); } catch (e) {} }
+let data = null, history = null, consensus = {}, sortKey = 'value', sortDir = -1, timer = null, lastPrices = {};
+
+// ---------- theme
+try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+$('#theme').onclick = () => {
+  const dark = getComputedStyle(document.documentElement).colorScheme === 'dark';
+  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('theme', document.documentElement.dataset.theme); } catch (e) {}
+  if (data) render();
+};
+
+// ---------- portfolio picker
+function renderPortfolioPicker(j) {
+  const sel = $('#pf'), list = j.portfolios || [];
+  if (list.length < 2 || sel.options.length) return;
+  sel.innerHTML = list.map(p => `<option value="${esc(p.id)}" ${p.id === PF ? 'selected' : ''}>${esc(p.label)}</option>`).join('');
+  sel.style.display = '';
+  const me = list.find(p => p.id === PF);
+  if (me) document.title = `Portfolio · ${me.label}`;
+  sel.onchange = () => { location.search = sel.value === 'main' ? '' : '?p=' + encodeURIComponent(sel.value); };
+}
+
+// ---------- static (GitHub Pages) mode: encrypted snapshots, password asked in the browser
+const STATIC = !!window.STATIC;
+let pw = null;
+try { pw = localStorage.getItem('pfpw'); } catch (e) {}
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function decryptBlob(d, password) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(d.salt), iterations: d.iter },
+    base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(d.iv) }, key, b64(d.ct));
+  return new TextDecoder().decode(pt);
+}
+function askPassword(msg) {
+  return new Promise(resolve => {
+    const box = document.createElement('div');
+    box.className = 'pw-overlay';
+    box.innerHTML = `<form class="pw-box"><h2>Portfolio</h2>
+      ${msg ? `<p class="err">${esc(msg)}</p>` : '<p>Enter the password to unlock.</p>'}
+      <input type="password" autocomplete="current-password" aria-label="Password" required>
+      <label><input type="checkbox" checked> Remember on this device</label>
+      <button type="submit">Unlock</button></form>`;
+    document.body.appendChild(box);
+    const [inp, rem] = box.querySelectorAll('input');
+    inp.focus();
+    box.querySelector('form').onsubmit = e => {
+      e.preventDefault();
+      box.remove();
+      resolve({ password: inp.value, remember: rem.checked });
+    };
+  });
+}
+async function fetchStatic() {
+  const r = await fetch(`data/${encodeURIComponent(PF)}.enc?t=${Date.now()}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error(r.status === 404 ? 'no data for this portfolio yet' : 'HTTP ' + r.status);
+  const blob = await r.json();
+  let msg = null;
+  for (;;) {
+    let remember = false;
+    if (!pw) ({ password: pw, remember } = await askPassword(msg));
+    try {
+      const j = JSON.parse(await decryptBlob(blob, pw));
+      if (remember) try { localStorage.setItem('pfpw', pw); } catch (e) {}
+      return j;
+    } catch (e) {
+      pw = null;
+      try { localStorage.removeItem('pfpw'); } catch (e2) {}
+      msg = 'Wrong password, try again.';
+    }
+  }
+}
+
+// ---------- data
+async function load(withHistory) {
+  try {
+    let j;
+    if (STATIC) {
+      j = await fetchStatic();
+    } else {
+      const ex = excluded.size ? '&exclude=' + encodeURIComponent([...excluded].join('|')) : '';
+      const r = await fetch('/api/portfolio?p=' + encodeURIComponent(PF) + (withHistory ? '&history=1' + ex : ''));
+      j = await r.json();
+    }
+    if (j.error) throw new Error(j.error);
+    data = j;
+    renderPortfolioPicker(j);
+    if (j.history) history = j.history;
+    if (j.consensus) consensus = j.consensus;
+    if (j.signals) signals = j.signals;
+    if (j.candidates) candidates = j.candidates;
+    if (j.fund_candidates) fundCandidates = j.fund_candidates;
+    render();
+    setStatus(true);
+  } catch (e) {
+    setStatus(false, e.message);
+  }
+  clearTimeout(timer);
+  timer = setTimeout(() => load(false), STATIC ? 5 * 60 * 1000 : ((data && data.refresh_seconds) || 30) * 1000);
+}
+function setStatus(ok, msg) {
+  const t = new Date().toLocaleTimeString('da-DK');
+  if (ok && STATIC) {
+    const g = new Date(data.generated * 1000), age = (Date.now() - g) / 60000;
+    const when = g.toLocaleString('da-DK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    $('#status').innerHTML = `<span class="dot ${age > 45 ? 'stale' : ''}"></span>Prices from ${when}`;
+    return;
+  }
+  $('#status').innerHTML = ok
+    ? `<span class="dot"></span>Live · updated ${t}`
+    : `<span class="dot stale"></span><span class="err">Update failed (${esc(msg)})</span>`;
+}
+$('#refresh').onclick = () => load(false);
+if (!STATIC) setInterval(() => load(true), 10 * 60 * 1000);   // refresh history every 10 min
+
+// ---------- derived rows
+function rows() {
+  return data.holdings.map(h => {
+    const q = h.quote || {};
+    const value = h.value ?? null;
+    const pl = h.cost != null && value != null ? value - h.cost : null;
+    return {
+      ...h, q, value,
+      price: q.price, avg: h.cost != null ? h.cost / h.shares : null,
+      avgNative: (h.quote || {}).currency === 'DKK' ? null : h.avg_native ?? (h.cost != null && h.fx ? h.cost / h.shares / h.fx : null),
+      avgNativeEst: h.avg_native == null,
+      dayAbs: h.value_prev != null && value != null ? value - h.value_prev : null,
+      dayPct: q.prev_close ? q.price / q.prev_close - 1 : null,
+      pl, plPct: pl != null && h.cost ? pl / h.cost : null,
+      excluded: excluded.has(h.name),
+      cons: consensus[h.symbol] || null,
+      consMean: consensus[h.symbol]?.mean ?? null,
+    };
+  });
+}
+
+function render() {
+  const all = rows();
+  const rs = all.filter(r => !r.excluded);
+  const exAll = all.filter(r => r.excluded);
+  const total = rs.reduce((a, r) => a + (r.value || 0), 0);
+  const prev = rs.reduce((a, r) => a + (r.value_prev ?? r.value ?? 0), 0);
+  const known = rs.filter(r => r.cost != null && r.value != null);
+  const unreal = known.reduce((a, r) => a + r.pl, 0);
+  const cost = known.reduce((a, r) => a + r.cost, 0);
+  const unknown = rs.filter(r => r.cost == null).map(r => r.name);
+
+  $('#source').textContent = data.source_file;
+  $('#k-value').textContent = kr(total);
+  $('#k-value-sub').textContent = `${rs.length} holdings` + (exAll.length ? ` · ${exAll.length} excluded` : '');
+  setDelta('#k-day', total - prev, `${arrow(total - prev)}${pct(prev ? total / prev - 1 : null)}`);
+  setDelta('#k-unreal', unreal, `${arrow(unreal)}${pct(cost ? unreal / cost : null)} on ${kr(cost)}` +
+    (unknown.length ? ` · excl. ${unknown.join(', ')}` : ''));
+  const realised = data.realised_total - exAll.reduce((a, r) => a + r.realised, 0);
+  const dividends = data.dividends_total - exAll.reduce((a, r) => a + r.dividends, 0);
+  setDelta('#k-real', realised + dividends, `Realised ${signed(realised)} · dividends ${signed(dividends)}`);
+  // Everything together: unrealised on what you hold + profit already taken + dividends received.
+  const overall = unreal + realised + dividends;
+  const netInvested = cost - realised - dividends;
+  setDelta('#k-total', overall, `${arrow(overall)}${pct(netInvested ? overall / netInvested : null)} on net invested ${kr(netInvested)}`);
+
+  $('#warnings').innerHTML = data.warnings.length
+    ? `<div class="warn"><b>Check config.json</b><ul>${data.warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : '';
+
+  const plan = computePlan(rs, total);
+  renderHoldings(all, total);
+  renderPlan(plan, total);
+  renderLevels(rs, total, plan);
+  renderScreen(rs, total, plan);
+  renderFunds(rs, total, plan);
+  renderAlloc(rs, total);
+  renderHistory();
+  renderSignals(rs);
+  renderTxs();
+}
+
+// ---------- technical signals
+let signals = null;
+function renderSignals(rs) {
+  if (data.signals) signals = data.signals;
+  if (!signals) return;
+  const list = rs.filter(r => signals[r.symbol]).map(r => ({ r, s: signals[r.symbol] }))
+    .sort((a, b) => b.s.score - a.s.score);
+  const icon = { Bullish: '▲', Bearish: '▼', Neutral: '●' };
+  const kind = { Bullish: 'bull', Bearish: 'bear', Neutral: 'neutral' };
+  $('#signals tbody').innerHTML = list.map(({ r, s }) => {
+    const px = r.q.price ?? s.price;
+    const vs = ma => ma == null ? '–' : `${nf2.format(ma)}<span class="sym ${px >= ma ? 'up' : 'down'}">${px >= ma ? 'above' : 'below'}</span>`;
+    const rsiNote = s.rsi == null ? '' : s.rsi > 70 ? 'overbought' : s.rsi < 30 ? 'oversold' : '';
+    const pos = s.range_pos == null ? null : Math.max(0, Math.min(1, s.range_pos));
+    return `<tr>
+      <td>${esc(r.name)}<span class="sym">${esc(r.symbol)}</span></td>
+      <td style="text-align:left"><span class="badge ${kind[s.label]}">${icon[s.label]} ${s.label}</span></td>
+      <td>${s.score > 0 ? '+' : ''}${s.score}</td>
+      <td>${s.rsi == null ? '–' : nf0.format(s.rsi)}${rsiNote ? `<span class="sym">${rsiNote}</span>` : ''}</td>
+      <td>${vs(s.sma50)}</td>
+      <td>${vs(s.sma200)}</td>
+      <td style="text-align:left">${pos == null ? '–' : `<div class="range" title="${Math.round(pos * 100)} % of the 52-week range"><div class="track"></div><div class="pt" style="left:${pos * 100}%"></div></div>
+        <div class="range-lbl"><span>${nf2.format(s.low52)}</span><span>${nf2.format(s.high52)}</span></div>`}</td>
+    </tr>
+    <tr class="why-row"><td colspan="7" class="why">${s.reasons.map(([sg, t]) => `<span><b class="${sg === '+' ? 'up' : 'down'}">${sg}</b> ${esc(t)}</span>`).join('')}</td></tr>`;
+  }).join('');
+}
+function setDelta(sel, v, sub) {
+  const el = $(sel);
+  el.textContent = signed(v) + ' kr.';
+  el.className = 'value ' + cls(v);
+  $(sel + '-sub').textContent = sub;
+}
+
+// ---------- rule engine: applies the rules in config.json to the current holdings
+const CONS_RANK = { strong_buy: 5, buy: 4, hold: 3, underperform: 2, sell: 1, strong_sell: 0 };
+const ACTION = {
+  Trim:   { kind: 'bear',    icon: '▼', rank: 0 },
+  Review: { kind: 'review',  icon: '!', rank: 1 },
+  Add:    { kind: 'bull',    icon: '▲', rank: 2 },
+  Hold:   { kind: 'neutral', icon: '●', rank: 3 },
+};
+const fmtPct = v => nf2.format(v) + ' %';
+
+function computePlan(rs, total) {
+  const R = data.rules || {}, core = new Set(data.core || []), sectors = data.sectors || {};
+  const on = k => R[k] !== null && R[k] !== undefined;
+  const w = r => (r.value || 0) / total * 100;
+  const perShare = r => r.value / r.shares;
+
+  // Sector weights over individual stocks (index funds are already diversified).
+  const sectorW = {};
+  rs.filter(r => !core.has(r.name)).forEach(r => {
+    const s = sectors[r.name] || 'Other';
+    sectorW[s] = (sectorW[s] || 0) + w(r);
+  });
+
+  const items = [];
+  let trimTotal = 0;
+  const sectorAfter = { ...sectorW };
+
+  for (const r of rs) {
+    const it = { r, name: r.name, weight: w(r), action: 'Hold', reasons: [], trade: null, core: core.has(r.name) };
+    r.plan = it;
+    items.push(it);
+    if (it.core || !r.value) continue;
+    const sec = sectors[r.name] || 'Other';
+    const sig = signals?.[r.symbol];
+    const cons = r.cons;
+
+    if (on('max_single_stock_pct') && it.weight > R.max_single_stock_pct) {
+      const dkk = (it.weight - R.max_single_stock_pct) / 100 * total;
+      const sh = Math.ceil(dkk / perShare(r));
+      it.action = 'Trim';
+      it.trade = { side: 'sell', shares: Math.min(sh, r.shares), dkk: Math.min(sh, r.shares) * perShare(r) };
+      it.reasons.push(`Weight ${fmtPct(it.weight)} is above the ${R.max_single_stock_pct} % single-stock limit.`);
+      trimTotal += it.trade.dkk;
+      sectorAfter[sec] -= it.trade.dkk / total * 100;
+    }
+    if (on('loss_review_pct') && r.plPct != null && r.plPct * 100 <= R.loss_review_pct) {
+      if (it.action === 'Hold') it.action = 'Review';
+      it.reasons.push(`Down ${fmtPct(-r.plPct * 100)} vs. your cost, past the ${R.loss_review_pct} % review level. ` +
+        `Re-check why you own it: would you buy it today at this price? Context: technical ${sig ? sig.label.toLowerCase() : 'n/a'}, ` +
+        `analysts ${cons ? (RATING[cons.rating]?.[0] || cons.rating).toLowerCase() : 'n/a'}.`);
+    }
+    if (on('profit_review_pct') && r.plPct != null && r.plPct * 100 >= R.profit_review_pct) {
+      if (it.action === 'Hold') it.action = 'Review';
+      it.reasons.push(`Up ${fmtPct(r.plPct * 100)}, past the +${R.profit_review_pct} % profit-review level.`);
+    }
+    if (on('max_sector_pct') && sectorW[sec] > R.max_sector_pct) {
+      it.reasons.push(`${sec} is ${fmtPct(sectorW[sec])} of the portfolio (limit ${R.max_sector_pct} %), so don't add to it.`);
+    }
+  }
+
+  // Add rule for individual stocks: small position, analysts positive, not bearish, sector has room, not in loss review.
+  for (const it of items) {
+    if (it.core || it.action !== 'Hold' || !it.r.value || !on('add_max_weight_pct')) continue;
+    const r = it.r, sec = sectors[r.name] || 'Other', sig = signals?.[r.symbol];
+    const consOk = !R.add_min_consensus || (r.cons && CONS_RANK[r.cons.rating] >= CONS_RANK[R.add_min_consensus]);
+    const sigOk = !(R.add_block_if_bearish && sig?.label === 'Bearish');
+    const secOk = !on('max_sector_pct') || sectorW[sec] < R.max_sector_pct;
+    if (it.weight < R.add_max_weight_pct && consOk && sigOk && secOk) {
+      const dkk = (R.add_max_weight_pct - it.weight) / 100 * total;
+      const sh = Math.floor(dkk / (r.value / r.shares));
+      if (sh > 0) {
+        it.action = 'Add';
+        it.trade = { side: 'buy', shares: sh, dkk: sh * r.value / r.shares };
+        it.reasons.push(`Small position (${fmtPct(it.weight)}) with analyst consensus ${RATING[r.cons.rating][0].toLowerCase()}, ` +
+          `no bearish technical signal, and room in ${sec}. Topping up to ${R.add_max_weight_pct} % fits the add rule.`);
+      }
+    } else if (!it.reasons.length) {
+      const why = [];
+      if (!consOk) why.push(`analyst consensus below ${R.add_min_consensus}`);
+      if (!sigOk) why.push('technical signal is bearish');
+      if (!secOk) why.push(`${sec} is over its limit`);
+      if (it.weight >= R.add_max_weight_pct) why.push(`already ${fmtPct(it.weight)} of the portfolio`);
+      it.reasons.push(`Within all limits. Not an add candidate: ${why.join(', ') || 'no rule applies'}.`);
+    }
+  }
+
+  // Core (index fund) target, funded first by the trims above.
+  // The amount is split over the core funds by config "core_split" (% per fund); without it,
+  // in proportion to what each fund is worth now (keeps your current mix).
+  const coreItems = items.filter(i => i.core);
+  const coreW = coreItems.reduce((a, i) => a + i.weight, 0);
+  const coreVal = coreItems.reduce((a, i) => a + (i.r.value || 0), 0);
+  const split = data.core_split || {};
+  const splitSum = coreItems.reduce((a, i) => a + (split[i.name] || 0), 0);
+  const share = i => splitSum > 0 ? (split[i.name] || 0) / splitSum
+    : coreVal > 0 ? (i.r.value || 0) / coreVal : 1 / coreItems.length;
+  let core_add = 0, new_money = 0, to_core = 0;
+  if (on('core_target_pct') && coreItems.length) {
+    const band = R.rebalance_band_pct || 0;
+    const mix = coreItems.length > 1
+      ? ` Split over your ${coreItems.length} core funds ${splitSum > 0 ? 'by "core_split" in config.json' : 'in proportion to their current value (set "core_split" in config.json to choose)'}.` : '';
+    if (coreW < R.core_target_pct - band) {
+      core_add = (R.core_target_pct - coreW) / 100 * total;
+      new_money = Math.max(0, core_add - trimTotal);
+      to_core = Math.min(core_add, trimTotal);
+      // With a fixed split, buy toward each fund's target value; otherwise pro rata.
+      const targetVal = (R.core_target_pct / 100) * total;
+      let want = coreItems.map(i => splitSum > 0 ? Math.max(0, share(i) * targetVal - (i.r.value || 0)) : share(i) * core_add);
+      const wsum = want.reduce((a, b) => a + b, 0) || 1;
+      want = want.map(x => x / wsum * core_add);
+      coreItems.forEach((ci, k) => {
+        const amt = want[k];
+        if (amt < 1) { ci.reasons.push(`Index core is ${fmtPct(coreW)} vs. a ${R.core_target_pct} % target; this fund is already at its share.${mix}`); return; }
+        ci.action = 'Add';
+        const sh = Math.floor(amt / perShare(ci.r));
+        ci.trade = { side: 'buy', shares: sh, dkk: sh * perShare(ci.r) };
+        ci._toCore = to_core * amt / core_add;
+        ci.reasons.push(`Index core is ${fmtPct(coreW)} vs. a ${R.core_target_pct} % target (±${band}). This fund's part: ${kr(amt)}` +
+          (new_money > 0 ? `, paid from the trim proceeds plus new money (about ${kr(new_money)} in all for the core).` : ' from the trim proceeds.') + mix);
+      });
+    } else if (coreW > R.core_target_pct + band) {
+      coreItems.forEach(ci => { ci.action = 'Trim'; ci.reasons.push(`Index core is ${fmtPct(coreW)}, above the ${R.core_target_pct} % target (±${band}).${mix}`); });
+    } else {
+      coreItems.forEach(ci => ci.reasons.push(`Index core is ${fmtPct(coreW)}, within the ${R.core_target_pct} % ± ${band} target band.`));
+    }
+  }
+
+  // What the portfolio would look like after the trims, with trim proceeds moved into the core.
+  const after = {};
+  items.forEach(i => after[i.name] = (i.r.value || 0) - (i.trade?.side === 'sell' ? i.trade.dkk : 0));
+  coreItems.forEach(i => after[i.name] += i._toCore || 0);
+  const coreAfter = coreItems.reduce((a, i) => a + after[i.name], 0) / total * 100;
+  const leftover = trimTotal - to_core;
+  const largest = items.filter(i => !i.core).sort((a, b) => after[b.name] - after[a.name])[0];
+  const secAfter = {};
+  items.filter(i => !i.core).forEach(i => { const s = sectors[i.name] || 'Other'; secAfter[s] = (secAfter[s] || 0) + after[i.name] / total * 100; });
+
+  rs.forEach(r => r.planRank = ACTION[r.plan.action].rank);
+  return { items, R, coreW, sectorW, trimTotal, core_add, new_money, leftover, after, largest, secAfter, coreAfter, hasCore: coreItems.length > 0 };
+}
+
+function planCell(r) {
+  if (r.excluded) return '<span class="sym" style="display:inline">Excluded</span>';
+  const p = r.plan;
+  if (!p) return '–';
+  const a = ACTION[p.action];
+  const t = p.trade ? `${p.trade.side === 'sell' ? 'Sell' : 'Buy'} ~${nf0.format(p.trade.shares)} sh. (${kr(p.trade.dkk)})` : '';
+  return `<a href="#plan" style="text-decoration:none" title="${esc(p.reasons.join(' '))}"><span class="badge ${a.kind}">${a.icon} ${p.action}</span></a>
+    ${t ? `<span class="sym">${t}</span>` : ''}`;
+}
+
+function renderPlan(plan, total) {
+  const { items, R, coreW, sectorW, trimTotal, core_add, new_money, leftover, after, largest, secAfter, coreAfter, hasCore } = plan;
+  const topSector = Object.entries(sectorW).sort((a, b) => b[1] - a[1])[0] || ['–', 0];
+  const topStock = items.filter(i => !i.core).sort((a, b) => b.weight - a.weight)[0];
+  const byAction = a => items.filter(i => i.action === a);
+  const item = i => `<div class="plan-item">
+      <div><span class="badge ${ACTION[i.action].kind}">${ACTION[i.action].icon} ${i.action}</span><div style="margin-top:4px">${esc(i.name)}</div></div>
+      <div>${i.trade ? `<b>${i.trade.side === 'sell' ? 'Sell' : 'Buy'} about ${nf0.format(i.trade.shares)} shares (≈ ${kr(i.trade.dkk)})</b><br>` : ''}
+        <span class="why">${i.reasons.map(esc).join('<br>')}</span></div></div>`;
+  const step = (title, list) => list.length ? `<div class="plan-step">${title}</div>${list.map(item).join('')}` : '';
+  const ruleList = [
+    ['max_single_stock_pct', v => `max ${v} % in any single stock`],
+    ['max_sector_pct', v => `max ${v} % in one sector`],
+    ['core_target_pct', v => `${v} % in broad index funds (±${R.rebalance_band_pct ?? 0})`],
+    ['loss_review_pct', v => `review at ${v} % vs. cost`],
+    ['profit_review_pct', v => `review at +${v} % gain`],
+    ['add_max_weight_pct', v => `add only below ${v} %, consensus ≥ ${R.add_min_consensus}${R.add_block_if_bearish ? ', not bearish' : ''}`],
+  ].map(([k, f]) => R[k] == null ? `<s>${k}</s> off` : f(R[k])).join(' · ');
+
+  $('#plan-body').innerHTML = `
+    <div class="plan-grid">
+      <div class="plan-stat"><div class="label">Index core</div><div class="v">${fmtPct(coreW)}</div><div class="sub">target ${R.core_target_pct ?? '–'} % → ${hasCore ? fmtPct(coreAfter) : '–'} after trims</div></div>
+      <div class="plan-stat"><div class="label">Largest stock</div><div class="v">${topStock ? fmtPct(topStock.weight) : '–'}</div><div class="sub">${topStock ? esc(topStock.name) : ''} · limit ${R.max_single_stock_pct ?? '–'} %</div></div>
+      <div class="plan-stat"><div class="label">Largest sector</div><div class="v">${fmtPct(topSector[1])}</div><div class="sub">${esc(topSector[0])} → ${fmtPct(secAfter[topSector[0]] || 0)} after trims</div></div>
+      <div class="plan-stat"><div class="label">Trims → core</div><div class="v">${kr(trimTotal)}</div><div class="sub">${new_money > 0 ? `+ ${kr(new_money)} new money to hit target` : leftover > 1 ? `${kr(trimTotal - leftover)} to core · ${kr(leftover)} left over` : 'covers the core target'}</div></div>
+    </div>
+    ${step('1 · Reduce what breaks a limit', byAction('Trim').filter(i => !i.core))}
+    ${step('2 · Re-check positions past the loss/profit review level', byAction('Review'))}
+    ${step('3 · Build the index core and top up small positions', byAction('Add'))}
+    ${leftover > 1 ? `<div class="plan-item"><div><span class="badge neutral">● Cash</span><div style="margin-top:4px">Left over</div></div>
+      <div><b>≈ ${kr(leftover)} of the trim proceeds is not needed for the core</b><br>
+      <span class="why">Keep it as cash, or spread it over stocks that are below the ${R.max_single_stock_pct ?? '–'} % limit, not under review, and in sectors with room.</span></div></div>` : ''}
+    ${step('4 · Leave as is', byAction('Hold'))}
+    <p class="plan-rules"><b>Rules used</b> (generic medium-risk rules of thumb, not personal advice): ${ruleList}. Change them under <code>rules</code> in config.json.
+      Bank “medium risk” profiles usually mix stocks with bonds; this portfolio is 100 % stocks, so its overall risk stays above a typical medium profile whatever these rules say.
+      Share counts are rounded; check prices, fees and tax (aktieindkomst) before trading.</p>`;
+}
+
+
+// ---------- price levels & timing (rules under "timing" in config.json)
+const TIMING = {
+  'Sell window':  { kind: 'bear',    icon: '▼' },
+  'Take profit':  { kind: 'bull',    icon: '$' },
+  'Average down': { kind: 'bull',    icon: '▲' },
+  'Wait':         { kind: 'review',  icon: '…' },
+  'In range':     { kind: 'neutral', icon: '●' },
+  'Core':         { kind: 'neutral', icon: '●' },
+};
+
+function computeTiming(r, total, plan) {
+  const T = data.timing || {}, R = data.rules || {}, sectors = data.sectors || {};
+  const sig = signals?.[r.symbol] || {};
+  const fx = r.fx || 1;
+  const px = r.q.price;
+  const avg = r.avg != null ? r.avg / fx : null;          // native currency
+  const gain = avg ? px / avg - 1 : null;
+  const out = { status: 'In range', notes: [], tp: [], avgDown: null, stop: sig.stop ?? null, avg, gain, trade: null };
+  if ((data.core || []).includes(r.name)) {
+    out.status = 'Core';
+    out.notes.push('Index core: managed by the core target in the rebalancing plan, not by price levels.');
+    return out;
+  }
+  if (avg == null) { out.notes.push('No purchase cost, so no levels.'); return out; }
+
+  // Take-profit steps
+  const steps = (T.take_profit_steps || []).filter(s => s && s.gain_pct != null);
+  out.tp = steps.map(s => ({ ...s, price: avg * (1 + s.gain_pct / 100), hit: gain * 100 >= s.gain_pct }));
+  const reached = out.tp.filter(s => s.hit).pop();
+
+  // Average-down zone
+  const adPct = T.average_down_below_cost_pct;
+  if (adPct != null) out.avgDown = avg * (1 + adPct / 100);
+
+  const fresh = sig.days_below_stop > 0 && sig.days_below_stop <= (T.sell_window_days ?? 10);
+  const pps = r.value / r.shares;                          // DKK per share now
+
+  if (fresh) {
+    out.status = 'Sell window';
+    out.notes.push(`Closed below the trailing stop ${nf2.format(sig.stop)} (${T.trailing_stop_pct} % under the ${nf2.format(sig.peak)} high from ${new Date(sig.peak_date).toLocaleDateString('da-DK')}) ` +
+      `${sig.days_below_stop} trading day${sig.days_below_stop > 1 ? 's' : ''} ago. A fresh break like this is the usual moment a stop rule says to sell or cut back.`);
+  } else if (reached) {
+    out.status = 'Take profit';
+    const sh = Math.max(1, Math.round(r.shares * reached.sell_pct / 100));
+    out.trade = { side: 'sell', shares: sh, dkk: sh * pps };
+    out.notes.push(`Up ${fmtPct(gain * 100)}, past the +${reached.gain_pct} % step. The rule sells ${reached.sell_pct} % of the position (~${sh} shares, ${kr(sh * pps)}) if you haven't already taken this step.`);
+  } else if (adPct != null && gain * 100 <= adPct) {
+    const block = [];
+    const consOk = !T.average_down_min_consensus || (r.cons && CONS_RANK[r.cons.rating] >= CONS_RANK[T.average_down_min_consensus]);
+    if (!consOk) block.push(`analyst consensus is ${r.cons ? RATING[r.cons.rating]?.[0].toLowerCase() : 'missing'} (rule needs ${T.average_down_min_consensus} or better)`);
+    if (T.average_down_needs_momentum && !(sig.macd_hist > 0)) block.push('momentum has not turned up yet (MACD negative)');
+    if (sig.label === 'Bearish') block.push('technical signal is bearish');
+    const sec = sectors[r.name] || 'Other';
+    const secW = plan.sectorW[sec] || 0;
+    const roomStock = R.max_single_stock_pct != null ? (R.max_single_stock_pct / 100 * total - r.value) / pps : Infinity;
+    const roomSector = R.max_sector_pct != null ? (R.max_sector_pct / 100 * total - secW / 100 * total) / pps : Infinity;
+    const bySize = r.shares * (T.average_down_max_add_pct ?? 33) / 100;
+    const n = Math.floor(Math.min(bySize, roomStock, roomSector));
+    if (roomSector < 1) block.push(`${sec} is already ${fmtPct(secW)} (limit ${R.max_sector_pct} %)`);
+    else if (roomStock < 1) block.push(`position is at the ${R.max_single_stock_pct} % limit`);
+    const newAvg = n > 0 ? (r.cost + n * pps) / (r.shares + n) / fx : null;
+    if (!block.length && n > 0) {
+      out.status = 'Average down';
+      out.trade = { side: 'buy', shares: n, dkk: n * pps };
+      out.notes.push(`Down ${fmtPct(-gain * 100)} vs. your cost and every average-down condition is met. Buying ~${n} shares (${kr(n * pps)}) ` +
+        `would lower your average from ${nf2.format(avg)} to ${nf2.format(newAvg)} (break-even then +${fmtPct((newAvg / px - 1) * 100)} instead of +${fmtPct((avg / px - 1) * 100)}).`);
+    } else {
+      out.status = 'Wait';
+      out.notes.push(`In the average-down zone (down ${fmtPct(-gain * 100)}), but not yet: ${block.join('; ') || 'no room to add'}.` +
+        (n > 0 ? ` If the conditions clear, ~${n} shares would bring your average to ${nf2.format(newAvg)}.` : ''));
+    }
+  } else {
+    const next = out.tp.find(s => !s.hit);
+    const parts = [];
+    if (next) parts.push(`next take-profit at ${nf2.format(next.price)} (+${fmtPct((next.price / px - 1) * 100)} away)`);
+    if (out.avgDown) parts.push(`average-down zone from ${nf2.format(out.avgDown)}`);
+    out.notes.push(`Between levels: ${parts.join(', ')}.`);
+  }
+  if (sig.days_below_stop > (T.sell_window_days ?? 10) && out.status !== 'Sell window') {
+    out.notes.push(`Has been under its trailing stop (${nf2.format(sig.stop)}) for ${sig.days_below_stop} trading days, so the sell window from that break has passed; the stop resets if it makes a new high.`);
+  }
+  if (T.overbought_rsi != null && sig.rsi > T.overbought_rsi && gain > 0) {
+    out.notes.push(`RSI ${nf0.format(sig.rsi)} is overbought: a common moment to take part of a profit.`);
+  }
+  return out;
+}
+
+function renderLevels(rs, total, plan) {
+  const order = { 'Sell window': 0, 'Take profit': 1, 'Average down': 2, 'Wait': 3, 'In range': 4, 'Core': 5 };
+  const list = rs.map(r => ({ r, t: r.timing = computeTiming(r, total, plan) }))
+    .sort((a, b) => order[a.t.status] - order[b.t.status] || (b.r.value - a.r.value));
+  $('#levels tbody').innerHTML = list.map(({ r, t }) => {
+    const b = TIMING[t.status];
+    const tp = t.tp.length ? t.tp.map(s => `<span class="${s.hit ? 'hit up' : ''}">${nf2.format(s.price)} <span class="sym" style="display:inline">+${s.gain_pct}</span></span>`).join('<br>') : '–';
+    const px = r.q.price;
+    return `<tr>
+      <td>${esc(r.name)}<span class="sym">${esc(r.symbol)}</span></td>
+      <td>${nf2.format(px)}<span class="sym">${esc(r.q.currency || '')}</span></td>
+      <td>${t.avg != null ? nf2.format(t.avg) : '–'}</td>
+      <td class="${cls(t.gain)}">${t.gain != null ? arrow(t.gain) + pct(t.gain) : '–'}</td>
+      <td>${t.status === 'Core' ? '–' : tp}</td>
+      <td>${t.avgDown != null && t.status !== 'Core' ? `<span class="${px <= t.avgDown ? 'hit' : ''}">≤ ${nf2.format(t.avgDown)}</span>` : '–'}</td>
+      <td>${t.stop != null && t.status !== 'Core' ? `<span class="${px < t.stop ? 'hit down' : ''}">${nf2.format(t.stop)}</span><span class="sym">high ${nf2.format(signals[r.symbol].peak)}</span>` : '–'}</td>
+      <td style="text-align:left"><span class="badge ${b.kind}">${b.icon} ${t.status}</span>
+        ${t.trade ? `<span class="sym">${t.trade.side === 'sell' ? 'Sell' : 'Buy'} ~${nf0.format(t.trade.shares)} sh. (${kr(t.trade.dkk)})</span>` : ''}</td>
+    </tr>
+    <tr class="why-row"><td colspan="8" class="why"><div class="why-in">${t.notes.map(esc).join('<br>')}</div></td></tr>`;
+  }).join('');
+  // Timing badge next to the plan badge on each holdings row.
+  rs.forEach(r => {
+    const t = r.timing;
+    if (!t || ['In range', 'Core'].includes(t.status)) return;
+    const cell = document.querySelector(`#holdings input.incl[data-n="${CSS.escape(r.name)}"]`)?.closest('tr')?.cells[12];
+    if (cell) cell.insertAdjacentHTML('beforeend', `<a href="#timing" style="text-decoration:none;display:block;margin-top:4px" title="${esc(t.notes.join(' '))}"><span class="badge ${TIMING[t.status].kind}">${TIMING[t.status].icon} ${t.status}</span></a>`);
+  });
+}
+
+
+// ---------- screen: candidates you don't own + exposure gaps
+const SECTOR_MAP = {
+  'Healthcare': 'Health care', 'Consumer Defensive': 'Consumer staples', 'Consumer Cyclical': 'Consumer discretionary',
+  'Financial Services': 'Financials', 'Basic Materials': 'Materials', 'Technology': 'Technology', 'Industrials': 'Industrials',
+  'Utilities': 'Utilities', 'Energy': 'Energy', 'Communication Services': 'Communication', 'Real Estate': 'Real estate',
+};
+const ALL_SECTORS = ['Health care', 'Industrials', 'Financials', 'Technology', 'Consumer staples', 'Consumer discretionary',
+  'Materials', 'Utilities', 'Energy', 'Communication', 'Real estate'];
+const COUNTRY = { CO: 'Denmark', OL: 'Norway', ST: 'Sweden', HE: 'Finland', DE: 'Germany', PA: 'France', L: 'UK', SW: 'Switzerland' };
+
+function renderScreen(rs, total, plan) {
+  const R = data.rules || {}, S = data.screen || {}, core = new Set(data.core || []);
+  const minN = S.min_analysts ?? 5, top = S.show_top ?? 10;
+
+  // Exposure facts
+  const sectorW = plan.sectorW;
+  const missing = ALL_SECTORS.filter(s => !(sectorW[s] > 0));
+  const country = {};
+  rs.forEach(r => {
+    const k = core.has(r.name) ? 'Global index fund' : (COUNTRY[r.symbol.split('.').pop()] || 'Other');
+    country[k] = (country[k] || 0) + r.value / total * 100;
+  });
+  const fmtList = o => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ${nf0.format(v)} %`).join(' · ');
+  $('#gaps').innerHTML = `<div class="gaps">
+    <div class="plan-stat"><div class="label">Sectors held (stocks)</div><div class="list">${fmtList(sectorW)}</div></div>
+    <div class="plan-stat"><div class="label">No exposure yet</div><div class="list">${missing.map(esc).join(' · ') || '–'}</div></div>
+    <div class="plan-stat"><div class="label">Countries</div><div class="list">${fmtList(country)}</div></div>
+    <div class="plan-stat"><div class="label">Asset classes</div><div class="list">Stocks 100 % · Bonds 0 %<br>ETFs (e.g. bonds, other regions) aren't analyst-rated: add their tickers to <code>screen.watchlist</code> to screen their trend.</div></div>
+  </div>`;
+
+  // Score candidates
+  const consPts = { strong_buy: 2, buy: 1, hold: 0, underperform: -1, sell: -1, strong_sell: -2 };
+  const starterDkk = (R.add_max_weight_pct ?? 5) / 100 * total;
+  const scored = [], dropped = [];
+  for (const c of candidates) {
+    const cons = c.consensus, sig = c.signal;
+    const sector = SECTOR_MAP[cons?.sector] || cons?.sector || (c.watchlist ? 'Fund / other' : 'Unknown');
+    const secW = sectorW[sector] || 0;
+    const fx = data.fx?.[c.currency] ?? 1;
+    const up = cons?.target_mean ? cons.target_mean / c.price - 1 : null;
+    const why = [];
+    let score = 0, blocked = null;
+
+    if (cons && cons.analysts >= minN) {
+      score += consPts[cons.rating] ?? 0;
+      why.push(`${cons.analysts} analysts rate it ${(RATING[cons.rating]?.[0] || cons.rating).toLowerCase()}` + (up != null ? `, mean target ${pct(up)} from today` : ''));
+      if (up != null) score += up >= 0.2 ? 1 : up < 0 ? -1 : 0;
+    } else if (!c.watchlist) {
+      dropped.push(`${c.name} (${cons ? cons.analysts : 0} analysts)`);
+      continue;
+    } else {
+      why.push('Not analyst-rated (normal for ETFs)');
+    }
+    if (sig) {
+      score += sig.label === 'Bullish' ? 1 : sig.label === 'Bearish' ? -1 : 0;
+      why.push(`technical ${sig.label.toLowerCase()} (score ${sig.score > 0 ? '+' : ''}${sig.score}${sig.rsi ? `, RSI ${nf0.format(sig.rsi)}` : ''})`);
+    }
+    if (R.max_sector_pct != null && secW + starterDkk / total * 100 > R.max_sector_pct && sector !== 'Fund / other') {
+      blocked = `${sector} would go over your ${R.max_sector_pct} % sector limit (now ${nf0.format(secW)} %)`;
+      score -= 2;
+    } else if (!secW && sector !== 'Fund / other' && sector !== 'Unknown') {
+      score += 1;
+      why.push(`adds a sector you don't hold (${sector})`);
+    }
+    const pps = c.price * fx;
+    const sh = Math.floor(starterDkk / pps);
+    scored.push({ c, sector, secW, up, score, why, blocked, sh, pps, sig, cons });
+  }
+  scored.sort((a, b) => (!!a.blocked - !!b.blocked) || b.score - a.score || (b.up ?? -9) - (a.up ?? -9));
+
+  $('#cands tbody').innerHTML = scored.slice(0, top).map((x, i) => {
+    const r = x.cons ? RATING[x.cons.rating] || [x.cons.rating, 'neutral', '●'] : null;
+    const s = x.sig ? { Bullish: ['bull', '▲'], Bearish: ['bear', '▼'], Neutral: ['neutral', '●'] }[x.sig.label] : null;
+    return `<tr>
+      <td>${i + 1}</td>
+      <td style="text-align:left">${esc(x.c.name)}${x.c.watchlist ? ' <span class="sym" style="display:inline">· watchlist</span>' : ''}<span class="sym">${esc(x.c.symbol)} · ${esc(x.sector)}</span></td>
+      <td>${nf2.format(x.c.price)}<span class="sym">${esc(x.c.currency)}</span></td>
+      <td style="text-align:left">${r ? `<span class="badge ${r[1]}">${r[2]} ${r[0]}</span><span class="sym">${x.cons.analysts} analysts · target <span class="${cls(x.up)}">${pct(x.up)}</span></span>` : '<span class="sym" style="display:inline">Not rated</span>'}</td>
+      <td style="text-align:left">${s ? `<span class="badge ${s[0]}">${s[1]} ${x.sig.label}</span>` : '–'}</td>
+      <td style="text-align:left">${x.blocked ? '<span class="badge review">! Over limit</span>' : x.secW ? `<span class="sym" style="display:inline">${esc(x.sector)} ${nf0.format(x.secW)} %</span>` : '<span class="badge bull">+ New sector</span>'}</td>
+      <td>${x.score > 0 ? '+' : ''}${x.score}</td>
+      <td>${x.sh > 0 ? `${nf0.format(x.sh)} sh.<span class="sym">≈ ${kr(x.sh * x.pps)}</span>` : `<span class="sym" style="display:inline">1 sh. = ${kr(x.pps)}</span>`}</td>
+    </tr>
+    <tr class="why-row"><td colspan="8" class="why"><div class="why-in">${esc(x.why.join('; '))}${x.blocked ? `. <b>${esc(x.blocked)}.</b>` : '.'}</div></td></tr>`;
+  }).join('') || '<tr><td colspan="8">Loading candidates…</td></tr>';
+
+  $('#screen-foot').innerHTML = `<b>How the score works:</b> analysts strong buy +2, buy +1, hold 0, sell −1 · mean target ≥ 20 % above price +1, below price −1 ·
+    technical bullish +1, bearish −1 · new sector for you +1 · would break your sector limit −2 (listed last).
+    Starter size = your ${R.add_max_weight_pct ?? 5} % add limit (${kr(starterDkk)}). Needs at least ${minN} analysts` +
+    (dropped.length ? `; left out: ${dropped.map(esc).join(', ')}` : '') +
+    `. Edit the list under <code>screen</code> in config.json. Check the company, fees and tax before buying anything.`;
+}
+
+
+// Broad ETFs you don't own, scored on what matters for funds: the gap they fill, fee, size and trend.
+function renderFunds(rs, total, plan) {
+  const R = data.rules || {}, core = new Set(data.core || []);
+  const denmark = rs.filter(r => r.symbol.endsWith('.CO')).reduce((a, r) => a + r.value, 0) / total * 100;
+  const coreNames = rs.filter(r => core.has(r.name)).map(r => r.name).join(', ') || 'your index fund';
+  const starterDkk = (R.add_max_weight_pct ?? 5) / 100 * total;
+  const list = fundCandidates.map(f => {
+    let score = 0, fills = '–', fillKind = 'neutral';
+    const why = [];
+    if (f.gap === 'bonds') {
+      score += 2; fills = 'Bonds'; fillKind = 'bull';
+      why.push('adds bonds, which you have none of; bonds are what normally make a portfolio "medium" rather than high risk');
+    } else if (f.gap === 'region') {
+      if (denmark > 50) { score += 1; fills = 'Region'; fillKind = 'bull'; why.push(`spreads beyond Denmark (${nf0.format(denmark)} % of your portfolio)`); }
+    } else if (f.gap === 'size') {
+      score += 1; fills = 'Small caps'; fillKind = 'bull'; why.push('adds smaller companies, which you have none of');
+    } else if (f.gap === 'sector') {
+      const w = plan.sectorW[f.sector] || 0;
+      if (R.max_sector_pct != null && w >= R.max_sector_pct) { score -= 2; fills = 'Over limit'; fillKind = 'review'; why.push(`${f.sector} is already over your sector limit`); }
+      else if (!w) { score += 1; fills = f.sector; fillKind = 'bull'; why.push(`adds ${f.sector.toLowerCase()}, a sector you don't hold`); }
+    } else if (f.gap === 'overlap') {
+      fills = 'Overlaps'; why.push(`very similar to ${coreNames}: an alternative to it rather than an addition`);
+    }
+    if (f.ter != null) {
+      const t = f.ter * 100;
+      if (t <= 0.10) { score += 1; why.push(`very low fee (${nf2.format(t)} %/yr)`); }
+      else if (t >= 0.30) { score -= 1; why.push(`higher fee (${nf2.format(t)} %/yr)`); }
+      else why.push(`fee ${nf2.format(t)} %/yr`);
+    } else why.push('fee not available, check the fund factsheet');
+    if (f.assets != null && f.assets < 5e8) { score -= 1; why.push('small fund (under €500m)'); }
+    if (f.morningstar_stars != null) {
+      if (f.morningstar_stars >= 4) score += 1; else if (f.morningstar_stars <= 2) score -= 1;
+      why.push(`Morningstar ${f.morningstar_stars} star${f.morningstar_stars === 1 ? '' : 's'}`);
+    }
+    if (f.volatility != null) why.push(`swings about ${nf0.format(f.volatility * 100)} % a year; worst fall in ${nf0.format(f.risk_years)} years ${pct(f.max_drawdown)}`);
+    if (f.signal) {
+      score += f.signal.label === 'Bullish' ? 1 : f.signal.label === 'Bearish' ? -1 : 0;
+      why.push(`trend ${f.signal.label.toLowerCase()}`);
+    }
+    const pps = f.price * (data.fx?.[f.currency] ?? 1);
+    return { f, score, fills, fillKind, why, pps, sh: Math.floor(starterDkk / pps) };
+  }).sort((a, b) => b.score - a.score || (a.f.ter ?? 1) - (b.f.ter ?? 1));
+
+  $('#funds tbody').innerHTML = list.map((x, i) => {
+    const s = x.f.signal ? { Bullish: ['bull', '▲'], Bearish: ['bear', '▼'], Neutral: ['neutral', '●'] }[x.f.signal.label] : null;
+    return `<tr>
+      <td>${i + 1}</td>
+      <td style="text-align:left">${esc(x.f.name)}<span class="sym">${esc(x.f.symbol)} · ${esc(x.f.category || '')}</span>
+        ${x.f.isin ? `<span class="sym"><a href="https://www.justetf.com/en/etf-profile.html?isin=${encodeURIComponent(x.f.isin)}" target="_blank" rel="noopener">justETF</a> ·
+          <a href="https://www.morningstar.dk/dk/funds/SecuritySearchResults.aspx?search=${encodeURIComponent(x.f.isin)}" target="_blank" rel="noopener">Morningstar</a></span>` : ''}</td>
+      <td>${nf2.format(x.f.price)}<span class="sym">${esc(x.f.currency)}</span></td>
+      <td>${x.f.ter != null ? nf2.format(x.f.ter * 100) + ' %' : '–'}</td>
+      <td class="${cls(x.f.return_1y)}">${x.f.return_1y != null ? arrow(x.f.return_1y) + pct(x.f.return_1y) : '–'}</td>
+      <td>${x.f.volatility != null ? `${nf0.format(x.f.volatility * 100)} %<span class="sym">max fall −${nf0.format(Math.abs(x.f.max_drawdown) * 100)} %</span>` : '–'}</td>
+      <td style="text-align:left">${x.f.morningstar_stars != null
+        ? `<span title="${x.f.morningstar_stars} of 5 (entered in config.json)">${'★'.repeat(x.f.morningstar_stars)}<span style="opacity:.25">${'★'.repeat(5 - x.f.morningstar_stars)}</span></span>`
+        : '<span class="sym" style="display:inline">not entered</span>'}</td>
+      <td style="text-align:left">${s ? `<span class="badge ${s[0]}">${s[1]} ${x.f.signal.label}</span>` : '–'}</td>
+      <td style="text-align:left"><span class="badge ${x.fillKind}">${esc(x.fills)}</span></td>
+      <td>${x.score > 0 ? '+' : ''}${x.score}</td>
+      <td>${x.sh > 0 ? `${nf0.format(x.sh)} sh.<span class="sym">≈ ${kr(x.sh * x.pps)}</span>` : `<span class="sym" style="display:inline">1 sh. = ${kr(x.pps)}</span>`}</td>
+    </tr>
+    <tr class="why-row"><td colspan="11" class="why"><div class="why-in">${esc(x.why.join('; '))}.</div></td></tr>`;
+  }).join('') || '<tr><td colspan="11">Loading funds…</td></tr>';
+
+  $('#funds-foot').innerHTML = `<b>How the score works:</b> adds bonds +2 · adds a region (while Denmark is over 50 %), small caps or a sector you don't hold +1 ·
+    sector already over your limit −2 · fee ≤ 0.10 % +1, ≥ 0.30 % −1 · fund under €500m −1 · Morningstar 4–5 stars +1, 1–2 stars −1 · trend bullish +1, bearish −1.
+    <b>Morningstar:</b> star ratings aren't available as free data, so look them up via the Morningstar link on each fund and type the stars (1–5) into <code>morningstar_stars</code> in config.json.
+    Risk (3 yr) is calculated from daily prices: how much the fund typically swings in a year, and its largest fall from a peak.
+    The list is one broad index ETF per category for comparison, not a recommendation; edit it under <code>screen.funds</code> in config.json.
+    <b>Danish tax:</b> ETFs on SKAT's ABIS list are taxed every year on gains, realised or not (lagerbeskatning); equity ETFs count as share income (aktieindkomst), bond ETFs usually as capital income (kapitalindkomst).
+    Check that a fund is on the ABIS list before buying. 1-year figures are price changes; distributing funds look lower because paid-out income isn't included.`;
+}
+
+// Published analyst consensus: rating badge, coverage, and mean price target vs. today's price.
+const RATING = {
+  strong_buy: ['Strong buy', 'bull', '▲'], buy: ['Buy', 'bull', '▲'], hold: ['Hold', 'neutral', '●'],
+  underperform: ['Underperform', 'bear', '▼'], sell: ['Sell', 'bear', '▼'], strong_sell: ['Strong sell', 'bear', '▼'],
+};
+function analystCell(r) {
+  const c = r.cons;
+  if (!c) return `<span class="sym" style="display:inline">${/ETF|ISHR|MSCI/i.test(r.name) ? 'Index fund – not rated' : 'No coverage'}</span>`;
+  const [label, kind, icon] = RATING[c.rating] || [c.rating, 'neutral', '●'];
+  const up = c.target_mean && r.price ? c.target_mean / r.price - 1 : null;
+  const b = c.breakdown || {};
+  const tip = `${c.analysts} analysts · mean score ${c.mean?.toFixed(2)} (1 = strong buy, 5 = strong sell)\n` +
+    `Strong buy ${b.strongBuy} · Buy ${b.buy} · Hold ${b.hold} · Sell ${b.sell} · Strong sell ${b.strongSell}\n` +
+    `Target range ${nf2.format(c.target_low)} – ${nf2.format(c.target_high)} ${r.q.currency || ''}`;
+  return `<span title="${esc(tip)}"><span class="badge ${kind}">${icon} ${label}</span>
+    <span class="sym">${c.analysts} analysts · target ${nf2.format(c.target_mean)}
+    <span class="${cls(up)}">(${pct(up)})</span></span></span>`;
+}
+
+
+// One sub-row per purchase. Sold shares are taken from the oldest buys first (FIFO) for this view only;
+// the totals, average cost and tax figures use the average-cost method.
+function lotRows(r) {
+  const pps = r.value / r.shares;                 // DKK per share now
+  const ccy = r.q.currency || '';
+  const lots = r.lots.slice().sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+  const rows = lots.map(l => {
+    const costLeft = l.cost != null ? l.cost * l.remaining / l.qty : null;
+    const val = l.remaining * pps;
+    const pl = costLeft != null ? val - costLeft : null;
+    const sold = l.remaining < 1e-9;
+    return `<tr class="${sold ? 'sold' : ''}">
+      <td style="text-align:left">${l.date ? new Date(l.date).toLocaleDateString('da-DK') : 'Before export'}</td>
+      <td>${nf0.format(l.qty)}</td>
+      <td>${sold ? 'sold' : nf0.format(l.remaining)}</td>
+      <td>${l.price ? `${nf2.format(l.price)} <span class="sym" style="display:inline">${esc(ccy)}</span>` : (l.cost != null ? `${nf2.format(l.cost / l.qty)} <span class="sym" style="display:inline">DKK</span>` : '–')}</td>
+      <td>${l.cost != null ? nf2.format(l.cost / l.qty) : '–'}</td>
+      <td>${costLeft != null && !sold ? nf0.format(costLeft) : '–'}</td>
+      <td>${sold ? '–' : nf0.format(val)}</td>
+      <td class="${cls(pl)}">${sold ? '–' : signed(pl)}</td>
+      <td class="${cls(pl)}">${sold || !costLeft ? '–' : arrow(pl) + pct(pl / costLeft)}</td>
+    </tr>`;
+  }).join('');
+  return `<tr class="lots"><td colspan="14"><table class="lot-table">
+    <thead><tr><th style="text-align:left">Bought</th><th>Shares</th><th>Still held</th><th>Price</th><th>Cost/sh. (DKK, incl. fees)</th>
+      <th>Cost (DKK)</th><th>Value now</th><th>P/L</th><th>P/L %</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="sym" style="margin-top:4px">Sales are taken from the oldest buys first in this view. Your average cost (${r.avg != null ? nf2.format(r.avg) : '–'} kr.) and tax use the average-cost method.</div>
+  </td></tr>`;
+}
+
+// ---------- holdings table
+function renderHoldings(rs, total) {
+  const k = sortKey;
+  rs.sort((a, b) => {
+    const x = a[k], y = b[k];
+    if (x == null) return 1; if (y == null) return -1;
+    return (typeof x === 'string' ? x.localeCompare(y) : x - y) * sortDir;
+  });
+  $('#holdings tbody').innerHTML = rs.map(r => {
+    const q = r.q;
+    const prevPx = lastPrices[r.symbol];
+    const flash = prevPx != null && q.price !== prevPx ? (q.price > prevPx ? 'flash-up' : 'flash-down') : '';
+    lastPrices[r.symbol] = q.price;
+    return `<tr class="${r.excluded ? 'excluded' : ''}">
+      <td><input type="checkbox" class="incl" data-n="${esc(r.name)}" ${r.excluded ? '' : 'checked'} aria-label="Include ${esc(r.name)}"></td>
+      <td>${(r.lots || []).length > 1 ? `<button class="lot-toggle" data-n="${esc(r.name)}" aria-expanded="${openLots.has(r.name)}" title="Show each purchase">${openLots.has(r.name) ? '▾' : '▸'}</button>` : ''}${esc(r.name)}<span class="sym">${esc(r.symbol)}${q.exchange ? ' · ' + esc(q.exchange) : ''}${(r.lots || []).length > 1 ? ` · ${r.lots.length} buys` : ''}</span></td>
+      <td>${nf0.format(r.shares)}</td>
+      <td>${r.avg != null ? nf2.format(r.avg) : '–'}</td>
+      <td>${r.avgNative != null && q.currency && q.currency !== 'DKK' ? `${r.avgNativeEst ? '≈ ' : ''}${nf2.format(r.avgNative)} <span class="sym" style="display:inline">${esc(q.currency || '')}</span>` : '–'}</td>
+      <td class="${flash}">${q.price != null ? nf2.format(q.price) : '–'} <span class="sym" style="display:inline">${esc(q.currency || '')}</span></td>
+      <td class="${cls(r.dayPct)}">${arrow(r.dayPct)}${pct(r.dayPct)}</td>
+      <td>${spark(q.spark, q.prev_close)}</td>
+      <td>${r.value != null ? nf0.format(r.value) : '–'}</td>
+      <td class="${cls(r.pl)}">${signed(r.pl)}</td>
+      <td class="${cls(r.plPct)}">${arrow(r.plPct)}${pct(r.plPct)}</td>
+      <td>${r.dividends ? `${nf0.format(r.dividends)}<span class="sym">${nf2.format(r.dividends / r.shares)} kr./sh.</span>` : '–'}</td>
+      <td style="text-align:left">${planCell(r)}</td>
+      <td style="text-align:left">${analystCell(r)}</td>
+    </tr>${openLots.has(r.name) && (r.lots || []).length > 1 ? lotRows(r) : ''}`;
+  }).join('');
+  const known = rs.filter(r => r.pl != null && !r.excluded);
+  const pl = known.reduce((a, r) => a + r.pl, 0), cost = known.reduce((a, r) => a + r.cost, 0);
+  $('#holdings tfoot').innerHTML = `<tr><td></td><td>Total</td><td colspan="6"></td><td>${nf0.format(total)}</td>
+    <td class="${cls(pl)}">${signed(pl)}</td><td class="${cls(pl)}">${arrow(pl)}${pct(cost ? pl / cost : null)}</td><td>${nf0.format(rs.filter(r => !r.excluded).reduce((a, r) => a + (r.dividends || 0), 0))}</td><td></td><td></td></tr>`;
+  document.querySelectorAll('#holdings th[data-k]').forEach(th => {
+    const base = th.textContent.replace(/ [▲▼]$/, '');
+    th.textContent = base + (th.dataset.k === sortKey ? (sortDir > 0 ? ' ▲' : ' ▼') : '');
+  });
+}
+document.querySelectorAll('#holdings th[data-k]').forEach(th => th.onclick = () => {
+  if (sortKey === th.dataset.k) sortDir *= -1; else { sortKey = th.dataset.k; sortDir = th.dataset.k === 'name' ? 1 : -1; }
+  render();
+});
+
+// Intraday sparkline: price line against a dashed previous-close reference.
+function spark(points, prevClose) {
+  if (!points || points.length < 2) return '<span class="sym" style="display:inline">–</span>';
+  const W = 90, H = 26, vs = points.map(p => p[1]).concat(prevClose ? [prevClose] : []);
+  const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+  const t0 = points[0][0], t1 = points[points.length - 1][0] || t0 + 1;
+  const x = t => ((t - t0) / (t1 - t0 || 1)) * (W - 2) + 1;
+  const y = v => H - 2 - ((v - lo) / span) * (H - 4);
+  const d = points.map((p, i) => (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1)).join('');
+  const last = points[points.length - 1][1];
+  const col = prevClose ? (last >= prevClose ? 'var(--up)' : 'var(--down)') : 'var(--text-2)';
+  const ref = prevClose ? `<line x1="0" x2="${W}" y1="${y(prevClose)}" y2="${y(prevClose)}" stroke="var(--axis)" stroke-dasharray="2 2"/>` : '';
+  return `<svg width="${W}" height="${H}" style="vertical-align:middle" aria-hidden="true">${ref}<path d="${d}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+}
+
+// ---------- allocation bars (single hue: magnitude)
+function renderAlloc(rs, total) {
+  const sorted = rs.filter(r => r.value).sort((a, b) => b.value - a.value);
+  const max = sorted[0]?.value || 1;
+  const el = $('#alloc');
+  el.innerHTML = sorted.map(r => `<div class="alloc-row" data-n="${esc(r.name)}">
+      <span class="nm">${esc(r.name)}</span>
+      <span><div class="bar" style="width:${(r.value / max * 100).toFixed(1)}%"></div></span>
+      <span class="pct">${nf2.format(r.value / total * 100)} %</span></div>`).join('') + '<div class="tip"></div>';
+  const tip = el.querySelector('.tip');
+  el.querySelectorAll('.alloc-row').forEach(row => {
+    const r = sorted.find(s => s.name === row.dataset.n);
+    row.onmousemove = e => {
+      tip.innerHTML = `<b>${esc(r.name)}</b><div class="row"><span>Value</span><span>${kr(r.value)}</span></div>
+        <div class="row"><span>Share</span><span>${nf2.format(r.value / total * 100)} %</span></div>`;
+      const b = el.getBoundingClientRect();
+      tip.style.display = 'block';
+      tip.style.left = Math.min(e.clientX - b.left + 12, b.width - tip.offsetWidth) + 'px';
+      tip.style.top = (e.clientY - b.top + 12) + 'px';
+    };
+    row.onmouseleave = () => tip.style.display = 'none';
+  });
+}
+
+// ---------- history chart: two DKK series on one axis, with crosshair tooltip
+function renderHistory() {
+  const box = $('#history'), svg = box.querySelector('svg'), tip = box.querySelector('.tip');
+  if (!history || !history.points?.length) { svg.innerHTML = ''; return; }
+  const pts = history.points.map(p => ({ ...p, t: new Date(p.date).getTime() }));
+  $('#history-note').textContent = history.excluded?.length
+    ? `Excludes ${history.excluded.join(', ')} (no purchase cost in the export).` : '';
+  if (STATIC && excluded.size) $('#history-note').textContent += ' The chart still includes unticked stocks in the phone version.';
+
+  const W = box.clientWidth, H = 260, m = { l: 56, r: 12, t: 10, b: 24 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const vmax = Math.max(...pts.map(p => Math.max(p.value, p.cost))) * 1.05;
+  const step = niceStep(vmax / 4);
+  const top = Math.ceil(vmax / step) * step;
+  const X = t => m.l + (t - t0) / (t1 - t0 || 1) * iw;
+  const Y = v => m.t + ih - v / top * ih;
+
+  let g = '';
+  for (let v = 0; v <= top + 1; v += step) {
+    g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="${v ? 'var(--grid)' : 'var(--axis)'}"/>
+      <text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${v >= 1000 ? nf0.format(v / 1000) + 'k' : v}</text>`;
+  }
+  const months = [];
+  const d0 = new Date(t0); d0.setDate(1); d0.setMonth(d0.getMonth() + 1);
+  const every = Math.max(1, Math.ceil(((t1 - t0) / 2.6e9) / Math.max(2, Math.floor(iw / 70))));
+  for (let d = new Date(d0), i = 0; d.getTime() <= t1; d.setMonth(d.getMonth() + 1), i++) {
+    if (i % every === 0) months.push(new Date(d));
+  }
+  months.forEach(d => g += `<text x="${X(d.getTime())}" y="${H - 6}" text-anchor="middle">${d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}</text>`);
+
+  const line = k => pts.map((p, i) => (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p[k]).toFixed(1)).join('');
+  g += `<path d="${line('cost')}" fill="none" stroke="var(--series-2)" stroke-width="2" stroke-linejoin="round"/>`;
+  g += `<path d="${line('value')}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"/>`;
+  g += `<g id="hover" style="display:none"><line y1="${m.t}" y2="${m.t + ih}" stroke="var(--axis)"/>
+    <circle r="4" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2"/>
+    <circle r="4" fill="var(--series-2)" stroke="var(--surface)" stroke-width="2"/></g>`;
+  g += `<rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = g;
+
+  const hover = svg.querySelector('#hover'), [c1, c2] = hover.querySelectorAll('circle'), vl = hover.querySelector('line');
+  svg.onmousemove = e => {
+    const b = svg.getBoundingClientRect(), mx = e.clientX - b.left;
+    const t = t0 + (mx - m.l) / iw * (t1 - t0);
+    let p = pts[0];
+    for (const q of pts) if (Math.abs(q.t - t) < Math.abs(p.t - t)) p = q;
+    const x = X(p.t);
+    hover.style.display = '';
+    vl.setAttribute('x1', x); vl.setAttribute('x2', x);
+    c1.setAttribute('cx', x); c1.setAttribute('cy', Y(p.value));
+    c2.setAttribute('cx', x); c2.setAttribute('cy', Y(p.cost));
+    const diff = p.value - p.cost;
+    tip.innerHTML = `<b>${new Date(p.t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</b>
+      <div class="row"><span><span class="swatch" style="background:var(--series-1)"></span>Market value</span><span>${kr(p.value)}</span></div>
+      <div class="row"><span><span class="swatch" style="background:var(--series-2)"></span>Cost basis</span><span>${kr(p.cost)}</span></div>
+      <div class="row"><span>Unrealised</span><span class="${cls(diff)}">${signed(diff)} kr.</span></div>`;
+    tip.style.display = 'block';
+    tip.style.left = (x + tip.offsetWidth + 16 > W ? x - tip.offsetWidth - 12 : x + 12) + 'px';
+    tip.style.top = m.t + 'px';
+  };
+  svg.onmouseleave = () => { hover.style.display = 'none'; tip.style.display = 'none'; };
+}
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+}
+
+// ---------- transactions
+function renderTxs() {
+  const typeName = { 'Udbytte': 'Dividend', 'Strakshandel': 'Trade', 'Markedsordre': 'Market order', 'Limitordre': 'Limit order' };
+  $('#txs tbody').innerHTML = data.transactions.map(t => `<tr>
+    <td>${new Date(t.date).toLocaleDateString('da-DK')}</td>
+    <td style="text-align:left">${esc(t.name)}</td>
+    <td style="text-align:left">${esc(typeName[t.type] || t.type)}${t.type !== 'Udbytte' ? (t.qty > 0 ? ' · buy' : ' · sell') : ''}</td>
+    <td>${nf0.format(t.qty)}</td>
+    <td>${t.price ? nf2.format(t.price) : '–'}</td>
+    <td class="${cls(t.amount)}">${signed(t.amount, nf2)}</td></tr>`).join('');
+}
+
+$('#holdings tbody').addEventListener('click', e => {
+  const b = e.target.closest('.lot-toggle');
+  if (!b) return;
+  const n = b.dataset.n;
+  if (openLots.has(n)) openLots.delete(n); else openLots.add(n);
+  try { localStorage.setItem(KEY('openLots'), JSON.stringify([...openLots])); } catch (e) {}
+  render();
+});
+$('#holdings tbody').addEventListener('change', e => {
+  if (!e.target.classList.contains('incl')) return;
+  const n = e.target.dataset.n;
+  if (e.target.checked) excluded.delete(n); else excluded.add(n);
+  saveExcluded();
+  render();
+  if (!STATIC) load(true);   // re-fetch history without the excluded stocks
+});
+window.addEventListener('resize', () => { if (data) renderHistory(); });
+load(true);
+</script>
+</body>
+</html>

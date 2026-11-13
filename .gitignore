@@ -1,0 +1,16 @@
+# Allow-list: only the code and the encrypted bundle are pushed.
+# config.json, portfolios/ and data/ (your trades) stay on this Mac.
+/*
+!/.gitignore
+!/.github/
+!/README.md
+!/portfolio.py
+!/xlsx_reader.py
+!/crypto_box.py
+!/build_static.py
+!/publish.py
+!/dashboard.html
+!/start.sh
+!/private/
+__pycache__/
+.DS_Store
