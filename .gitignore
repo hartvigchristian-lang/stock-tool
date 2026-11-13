@@ -10,6 +10,9 @@
 !/build_static.py
 !/publish.py
 !/dashboard.html
+!/manifest.json
+!/make_icons.py
+!/icons/
 !/start.sh
 !/private/
 __pycache__/

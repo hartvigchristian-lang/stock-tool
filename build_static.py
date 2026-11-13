@@ -8,6 +8,7 @@ Runs on GitHub Actions (or locally to test):
 Password: env PORTFOLIO_PASSWORD.  Usage: python build_static.py [--no-unpack]
 """
 import io
+import shutil
 import json
 import os
 import sys
@@ -45,6 +46,8 @@ def main():
     html = html.replace("<head>", "<head>\n<script>window.STATIC = true;</script>", 1)
     (site / "index.html").write_text(html, encoding="utf-8")
     (site / ".nojekyll").write_text("")
+    shutil.copy(HERE / "manifest.json", site / "manifest.json")
+    shutil.copytree(HERE / "icons", site / "icons", dirs_exist_ok=True)
 
     cfg = portfolio.load_config()
     for p in portfolio.portfolio_list(cfg):

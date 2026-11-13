@@ -698,6 +698,10 @@ class Handler(BaseHTTPRequestHandler):
         url = urllib.parse.urlparse(self.path)
         if url.path in ("/", "/index.html"):
             self._send(200, "text/html; charset=utf-8", (HERE / "dashboard.html").read_bytes())
+        elif url.path == "/manifest.json":
+            self._send(200, "application/manifest+json", (HERE / "manifest.json").read_bytes())
+        elif url.path in ("/icons/icon-180.png", "/icons/icon-192.png", "/icons/icon-512.png"):
+            self._send(200, "image/png", (HERE / url.path.lstrip("/")).read_bytes())
         elif url.path == "/api/portfolio":
             qs = urllib.parse.parse_qs(url.query)
             try:
