@@ -41,6 +41,7 @@ jobs:
         name: Build encrypted site
         env:
           PORTFOLIO_PASSWORD: ${{ secrets.PORTFOLIO_PASSWORD }}
+          PORTFOLIO_PASSWORD_JONATHAN: ${{ secrets.PORTFOLIO_PASSWORD_JONATHAN }}
         run: python build_static.py
       - if: steps.check.outputs.ready == 'true'
         uses: actions/upload-pages-artifact@v3

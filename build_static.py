@@ -49,17 +49,32 @@ def main():
     shutil.copy(HERE / "manifest.json", site / "manifest.json")
     shutil.copytree(HERE / "icons", site / "icons", dirs_exist_ok=True)
 
+    # Who can open what: the main password opens every portfolio; a portfolio can also name an
+    # env var with its own password (config.json → portfolios → id → "password_env"), which
+    # opens only that portfolio.
     cfg = portfolio.load_config()
+    main_kek = crypto_box.make_kek(password)
+    ids = []
     for p in portfolio.portfolio_list(cfg):
         t0 = time.time()
+        keks = [main_kek]
+        env = cfg.get("portfolios", {}).get(p["id"], {}).get("password_env")
+        if env and os.environ.get(env):
+            keks.append(crypto_box.make_kek(os.environ[env]))
+        elif env:
+            print(f"  note: {env} not set, so only the main password opens {p['label']}")
         snap = portfolio.snapshot(True, (), p["id"])
         snap["static"] = True
+        snap["label"] = p["label"]
+        snap["portfolios"] = [p]   # the browser lists only the portfolios a password opens
         data = json.dumps(snap, default=str).encode()
-        (site / "data" / f"{p['id']}.enc").write_bytes(crypto_box.encrypt(data, password))
+        (site / "data" / f"{p['id']}.enc").write_bytes(crypto_box.encrypt_for(data, keks))
+        ids.append(p["id"])
         print(f"{p['label']}: {len(snap['holdings'])} holdings, {len(snap['warnings'])} warnings, "
               f"{time.time() - t0:.1f}s")
         for w in snap["warnings"]:
             print("  warning:", w)
+    (site / "data" / "index.json").write_text(json.dumps({"portfolios": ids}))
 
 
 if __name__ == "__main__":

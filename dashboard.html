@@ -180,6 +180,7 @@ input.incl { width: 15px; height: 15px; cursor: pointer; accent-color: var(--ser
       <span id="status"><span class="dot stale"></span>Loading…</span>
       <span id="source"></span>
       <button id="refresh" title="Refresh now">Refresh</button>
+      <button id="lock" title="Forget the password on this device" style="display:none">Lock</button>
       <button id="theme" title="Toggle light/dark">◐</button>
     </div>
   </header>
@@ -362,7 +363,27 @@ const STATIC = !!window.STATIC;
 let pw = null;
 try { pw = localStorage.getItem('pfpw'); } catch (e) {}
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const keyCache = new Map();   // PBKDF2 is slow on phones: derive once per password + salt
+function pwKey(password, salt, iter) {
+  const k = `${salt}|${iter}|${password}`;
+  if (!keyCache.has(k)) keyCache.set(k, (async () => {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(salt), iterations: iter },
+      base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  })());
+  return keyCache.get(k);
+}
 async function decryptBlob(d, password) {
+  if (d.v === 2) {   // one data key, wrapped once per password allowed to open this file
+    for (const s of d.slots) {
+      let raw;
+      try { raw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(s.iv) }, await pwKey(password, s.salt, s.iter), b64(s.ct)); }
+      catch (e) { continue; }
+      const dk = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+      return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(d.iv) }, dk, b64(d.ct)));
+    }
+    throw new Error('wrong password');
+  }
   const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
   const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(d.salt), iterations: d.iter },
     base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
@@ -389,23 +410,40 @@ function askPassword(msg) {
   });
 }
 async function fetchStatic() {
-  const r = await fetch(`data/${encodeURIComponent(PF)}.enc?t=${Date.now()}`, { cache: 'no-store' });
-  if (!r.ok) throw new Error(r.status === 404 ? 'no data for this portfolio yet' : 'HTTP ' + r.status);
-  const blob = await r.json();
+  const t = Date.now();
+  const idx = await fetch(`data/index.json?t=${t}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : { portfolios: [PF] });
+  const blobs = await Promise.all(idx.portfolios.map(id =>
+    fetch(`data/${encodeURIComponent(id)}.enc?t=${t}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
   let msg = null;
   for (;;) {
     let remember = false;
     if (!pw) ({ password: pw, remember } = await askPassword(msg));
-    try {
-      const j = JSON.parse(await decryptBlob(blob, pw));
+    // Open every portfolio this password unlocks; the others stay hidden.
+    const opened = {};
+    await Promise.all(idx.portfolios.map(async (id, i) => {
+      if (!blobs[i]) return;
+      try { opened[id] = JSON.parse(await decryptBlob(blobs[i], pw)); } catch (e) {}
+    }));
+    const ids = idx.portfolios.filter(id => opened[id]);
+    if (ids.length) {
       if (remember) try { localStorage.setItem('pfpw', pw); } catch (e) {}
+      if (!opened[PF]) {   // e.g. Jonathan opening the plain link: go to the first one he can see
+        location.replace(ids[0] === 'main' ? location.pathname : '?p=' + encodeURIComponent(ids[0]));
+        return new Promise(() => {});
+      }
+      const j = opened[PF];
+      j.portfolios = ids.map(id => ({ id, label: opened[id].label || id }));
       return j;
-    } catch (e) {
-      pw = null;
-      try { localStorage.removeItem('pfpw'); } catch (e2) {}
-      msg = 'Wrong password, try again.';
     }
+    pw = null;
+    try { localStorage.removeItem('pfpw'); } catch (e2) {}
+    msg = 'Wrong password, try again.';
   }
+}
+
+if (STATIC) {
+  $('#lock').style.display = '';
+  $('#lock').onclick = () => { try { localStorage.removeItem('pfpw'); } catch (e) {} location.replace(location.pathname); };
 }
 
 // ---------- data
