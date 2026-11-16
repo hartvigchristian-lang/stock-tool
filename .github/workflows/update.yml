@@ -16,9 +16,9 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
+# No workflow-level concurrency group: each run dispatches the next while it is still running,
+# and GitHub sometimes left that queued run "pending" for 40+ minutes. The "next" job already
+# makes sure only one update is in flight.
 
 jobs:
   build:
@@ -75,7 +75,15 @@ jobs:
           dow=$(date -u +%u); h=$(date -u +%H)
           if [ "$dow" -gt 5 ] || [ "$h" -lt 7 ] || [ "$h" -ge 21 ]; then echo "Outside market hours, chain stops."; exit 0; fi
           sleep 540
-          n=$(gh run list -R "$GITHUB_REPOSITORY" -w update.yml -L 20 --json status,databaseId \
-                --jq '[.[] | select(.status != "completed" and .databaseId != ${{ github.run_id }})] | length')
-          if [ "$n" -gt 0 ]; then echo "Another update is already queued or running."; exit 0; fi
+          # Another update already in flight (e.g. a scheduled one)? Let that one carry the chain,
+          # unless it has been stuck waiting for over 15 minutes: then cancel it and go on.
+          now=$(date -u +%s); busy=0
+          for r in $(gh run list -R "$GITHUB_REPOSITORY" -w update.yml -L 20 --json status,databaseId,createdAt \
+                --jq '.[] | select(.status != "completed" and .databaseId != ${{ github.run_id }}) | "\(.databaseId),\(.status),\(.createdAt)"'); do
+            id=${r%%,*}; rest=${r#*,}; st=${rest%%,*}; created=$(date -u -d "${rest#*,}" +%s)
+            if [ "$st" != "in_progress" ] && [ $((now - created)) -gt 900 ]; then
+              echo "Cancelling stuck run $id ($st since ${rest#*,})"; gh run cancel "$id" -R "$GITHUB_REPOSITORY" || true
+            else busy=1; fi
+          done
+          if [ "$busy" = 1 ]; then echo "Another update is already queued or running."; exit 0; fi
           gh workflow run update.yml -R "$GITHUB_REPOSITORY" --ref main
