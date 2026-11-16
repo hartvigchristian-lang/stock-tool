@@ -5,8 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    # Every 15 minutes, 07:00-21:59 UTC on weekdays (GitHub may delay scheduled runs).
-    - cron: "*/15 7-21 * * 1-5"
+    # GitHub often delays or skips scheduled runs, so these only (re)start the chain:
+    # each weekday run starts the next one itself about 10 minutes later (see "next").
+    - cron: "7,37 7-20 * * 1-5"
     # Once a day at the weekend.
     - cron: "0 9 * * 0,6"
 
@@ -17,7 +18,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -57,3 +58,24 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+  next:
+    # Keeps prices fresh in market hours without relying on GitHub's schedule: wait ~10 minutes,
+    # then start the next update, unless one is already queued or running.
+    needs: [build, deploy]
+    if: always() && needs.build.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+    steps:
+      - name: Start the next update in market hours
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dow=$(date -u +%u); h=$(date -u +%H)
+          if [ "$dow" -gt 5 ] || [ "$h" -lt 7 ] || [ "$h" -ge 21 ]; then echo "Outside market hours, chain stops."; exit 0; fi
+          sleep 540
+          n=$(gh run list -R "$GITHUB_REPOSITORY" -w update.yml -L 20 --json status,databaseId \
+                --jq '[.[] | select(.status != "completed" and .databaseId != ${{ github.run_id }})] | length')
+          if [ "$n" -gt 0 ]; then echo "Another update is already queued or running."; exit 0; fi
+          gh workflow run update.yml -R "$GITHUB_REPOSITORY" --ref main
