@@ -5,11 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    # GitHub often delays or skips scheduled runs, so these only (re)start the chain:
-    # each weekday run starts the next one itself about 10 minutes later (see "next").
-    - cron: "7,37 7-20 * * 1-5"
-    # Once a day at the weekend.
-    - cron: "0 9 * * 0,6"
+    # Only a safety net that restarts the chain if it ever breaks: each run starts the next
+    # one itself (see "next"). GitHub often delays or skips scheduled runs.
+    - cron: "17 */3 * * *"
 
 permissions:
   contents: read
@@ -59,31 +57,36 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
   next:
-    # Keeps prices fresh in market hours without relying on GitHub's schedule: wait ~10 minutes,
-    # then start the next update, unless one is already queued or running.
+    # Keeps prices fresh without relying on GitHub's schedule (it often delays or skips runs):
+    # every run starts the next one itself. Weekdays 07-21 UTC: every ~10 minutes. Otherwise
+    # it keeps going once an hour, so the chain never stops and the morning needs no restart.
     needs: [build, deploy]
     if: always() && needs.build.outputs.ready == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 70
     permissions:
       actions: write
     steps:
-      - name: Start the next update in market hours
+      - name: Start the next update
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          dow=$(date -u +%u); h=$(date -u +%H)
-          if [ "$dow" -gt 5 ] || [ "$h" -lt 7 ] || [ "$h" -ge 21 ]; then echo "Outside market hours, chain stops."; exit 0; fi
-          sleep 540
-          # Another update already in flight (e.g. a scheduled one)? Let that one carry the chain,
-          # unless it has been stuck waiting for over 15 minutes: then cancel it and go on.
+          market() { [ "$(date -u +%u)" -le 5 ] && [ "$(date -u +%-H)" -ge 7 ] && [ "$(date -u +%-H)" -lt 21 ]; }
+          if market; then
+            sleep 540
+          else
+            # Wait up to 55 minutes, but wake every minute so the market open is not missed.
+            for m in $(seq 1 55); do sleep 60; market && break; done
+          fi
+          # Another update in flight? The newest run carries the chain; older ones step aside.
+          # A run stuck waiting in the queue for over 15 minutes is cancelled.
           now=$(date -u +%s); busy=0
           for r in $(gh run list -R "$GITHUB_REPOSITORY" -w update.yml -L 20 --json status,databaseId,createdAt \
-                --jq '.[] | select(.status != "completed" and .databaseId != ${{ github.run_id }}) | "\(.databaseId),\(.status),\(.createdAt)"'); do
+                --jq '.[] | select(.status != "completed" and .databaseId > ${{ github.run_id }}) | "\(.databaseId),\(.status),\(.createdAt)"'); do
             id=${r%%,*}; rest=${r#*,}; st=${rest%%,*}; created=$(date -u -d "${rest#*,}" +%s)
             if [ "$st" != "in_progress" ] && [ $((now - created)) -gt 900 ]; then
               echo "Cancelling stuck run $id ($st since ${rest#*,})"; gh run cancel "$id" -R "$GITHUB_REPOSITORY" || true
             else busy=1; fi
           done
-          if [ "$busy" = 1 ]; then echo "Another update is already queued or running."; exit 0; fi
+          if [ "$busy" = 1 ]; then echo "A newer update is already queued or running."; exit 0; fi
           gh workflow run update.yml -R "$GITHUB_REPOSITORY" --ref main
