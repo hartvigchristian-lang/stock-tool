@@ -668,6 +668,7 @@ def build_history(txs, positions, tickers, opening, exclude=frozenset()):
                 shares[t["name"]] += t["qty"]
             ti += 1
         value = 0.0
+        by = {}   # per stock [value, cost], so the browser can leave unticked stocks out
         for n in names:
             s = symbols[n]
             if hist.get(s) and d in hist[s]:
@@ -681,10 +682,12 @@ def build_history(txs, positions, tickers, opening, exclude=frozenset()):
                 if ccy != "DKK" and fx_live.get(ccy):
                     last[ccy] = fx_live[ccy]
             rate = 1.0 if ccy == "DKK" else last.get(ccy)
-            if shares[n] and s in last and rate:
-                value += shares[n] * last[s] * rate
+            v = shares[n] * last[s] * rate if shares[n] and s in last and rate else 0.0
+            value += v
+            if v or cost[n]:
+                by[n] = [round(v, 2), round(cost[n], 2)]
         out.append({"date": d.isoformat(), "value": round(value, 2),
-                    "cost": round(sum(cost.values()), 2)})
+                    "cost": round(sum(cost.values()), 2), "by": by})
     excluded = [n for n, p in positions.items() if not p["cost_known"]]
     return {"points": out, "excluded": excluded}
 

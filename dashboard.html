@@ -1197,10 +1197,18 @@ function renderAlloc(rs, total) {
 function renderHistory() {
   const box = $('#history'), svg = box.querySelector('svg'), tip = box.querySelector('.tip');
   if (!history || !history.points?.length) { svg.innerHTML = ''; return; }
-  const pts = history.points.map(p => ({ ...p, t: new Date(p.date).getTime() }));
+  // Leave unticked stocks out (per-stock values come with each point), and start the chart
+  // where the remaining stocks start.
+  let pts = history.points.map(p => {
+    let value = p.value, cost = p.cost;
+    for (const n of excluded) { const b = p.by?.[n]; if (b) { value -= b[0]; cost -= b[1]; } }
+    return { ...p, value, cost, t: new Date(p.date).getTime() };
+  });
+  const first = pts.findIndex(p => Math.abs(p.value) > 0.5 || Math.abs(p.cost) > 0.5);
+  pts = first > 0 ? pts.slice(first) : pts;
+  if (!pts.length) { svg.innerHTML = ''; return; }
   $('#history-note').textContent = history.excluded?.length
     ? `Excludes ${history.excluded.join(', ')} (no purchase cost in the export).` : '';
-  if (STATIC && excluded.size) $('#history-note').textContent += ' The chart still includes unticked stocks in the phone version.';
 
   const W = box.clientWidth, H = 260, m = { l: 56, r: 12, t: 10, b: 24 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
