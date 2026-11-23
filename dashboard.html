@@ -500,7 +500,7 @@ function rows() {
       avgNative: (h.quote || {}).currency === 'DKK' ? null : h.avg_native ?? (h.cost != null && h.fx ? h.cost / h.shares / h.fx : null),
       avgNativeEst: h.avg_native == null,
       dayAbs: h.value_prev != null && value != null ? value - h.value_prev : null,
-      dayPct: q.prev_close ? q.price / q.prev_close - 1 : null,
+      dayPct: h.traded_today === false ? 0 : q.prev_close ? q.price / q.prev_close - 1 : null,
       pl, plPct: pl != null && h.cost ? pl / h.cost : null,
       excluded: excluded.has(h.name),
       cons: consensus[h.symbol] || null,

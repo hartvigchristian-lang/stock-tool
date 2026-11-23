@@ -15,6 +15,7 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, date
+from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -353,9 +354,16 @@ def snapshot(include_history, exclude=(), pid=None):
         if q and q["currency"] in fx:
             rate = fx[q["currency"]]
             row["value"] = p["shares"] * q["price"] * rate
-            if q["prev_close"]:
+            # "Today" is the Danish date. A market that has not traded yet today (US stocks in the
+            # Danish morning, everything at the weekend) has no change today, not the last session's.
+            dk = ZoneInfo("Europe/Copenhagen")
+            today_dk = datetime.now(dk).date()
+            row["traded_today"] = bool(q.get("time")) and datetime.fromtimestamp(q["time"], dk).date() >= today_dk
+            if not row["traded_today"]:
+                row["value_prev"] = row["value"]
+            elif q["prev_close"]:
                 # Shares bought today count from their purchase cost, not yesterday's close.
-                today_iso = datetime.now().date().isoformat()
+                today_iso = today_dk.isoformat()
                 new = [l for l in p["lots"] if l["date"] == today_iso and l["remaining"] > 0]
                 new_qty = sum(l["remaining"] for l in new)
                 new_cost = sum(l["cost"] * l["remaining"] / l["qty"] for l in new)
