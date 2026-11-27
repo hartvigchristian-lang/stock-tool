@@ -256,10 +256,10 @@ input.incl { width: 15px; height: 15px; cursor: pointer; accent-color: var(--ser
           <th title="Untick to leave a stock out of totals, charts and the plan">Incl.</th>
           <th data-k="name">Security</th>
           <th data-k="dayPct">Today</th>
+          <th data-k="price">Price</th>
           <th data-k="shares">Shares</th>
           <th data-k="avg">Avg cost (DKK)</th>
           <th data-k="avgNative" title="Average purchase price in the stock's own currency, excl. fees (foreign stocks only). ≈ = estimated from DKK cost at today's exchange rate">Avg cost (orig.)</th>
-          <th data-k="price">Price</th>
           <th>Intraday</th>
           <th data-k="value">Value (DKK)</th>
           <th data-k="pl">P/L (DKK)</th>
@@ -1166,10 +1166,10 @@ function renderHoldings(rs, total) {
       <td><input type="checkbox" class="incl" data-n="${esc(r.name)}" ${r.excluded ? '' : 'checked'} aria-label="Include ${esc(r.name)}"></td>
       <td>${(r.lots || []).length > 1 ? `<button class="lot-toggle" data-n="${esc(r.name)}" aria-expanded="${openLots.has(r.name)}" title="Show each purchase">${openLots.has(r.name) ? '▾' : '▸'}</button>` : ''}<button class="nm" data-s="${esc(r.symbol)}" title="Price details and news">${esc(r.name)}</button><span class="sym">${esc(r.symbol)}<span class="exch">${q.exchange ? ' · ' + esc(q.exchange) : ''}${(r.lots || []).length > 1 ? ` · ${r.lots.length} buys` : ''}</span></span></td>
       <td class="${cls(r.dayPct)}">${arrow(r.dayPct)}${pct(r.dayPct)}${r.dayAbs != null ? `<span class="sym">${signed(r.dayAbs)} kr.</span>` : ''}</td>
+      <td class="${flash}">${q.price != null ? nf2.format(q.price) : '–'}<span class="sym">${esc(q.currency || '')}</span></td>
       <td>${nf0.format(r.shares)}</td>
       <td>${r.avg != null ? nf2.format(r.avg) : '–'}</td>
       <td>${r.avgNative != null && q.currency && q.currency !== 'DKK' ? `${r.avgNativeEst ? '≈ ' : ''}${nf2.format(r.avgNative)} <span class="sym" style="display:inline">${esc(q.currency || '')}</span>` : '–'}</td>
-      <td class="${flash}">${q.price != null ? nf2.format(q.price) : '–'} <span class="sym" style="display:inline">${esc(q.currency || '')}</span></td>
       <td>${spark(q.spark, q.prev_close)}</td>
       <td>${r.value != null ? nf0.format(r.value) : '–'}</td>
       <td class="${cls(r.pl)}">${signed(r.pl)}</td>
