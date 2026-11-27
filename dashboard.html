@@ -118,6 +118,42 @@ details summary { cursor: pointer; font-weight: 600; font-size: 15px; }
 .lot-toggle { border: none; background: none; padding: 0 6px 0 0; font-size: 15px; line-height: 1; color: var(--series-1); cursor: pointer; }
 .lot-toggle:hover { color: var(--text); background: none; }
 tr.lots > td { padding: 0 10px 10px 34px; background: var(--wash); }
+/* Stock name opens the detail panel */
+button.nm { border: none; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--text); text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: var(--axis); text-underline-offset: 3px; }
+button.nm:hover { background: none; color: var(--series-1); text-decoration-color: currentColor; }
+dialog.sd { border: 1px solid var(--border); border-radius: 14px; padding: 0; width: min(720px, calc(100% - 24px)); max-height: calc(100% - 24px); background: var(--surface); color: var(--text); }
+dialog.sd::backdrop { background: rgba(0,0,0,.45); }
+.sd-in { padding: 18px 20px 22px; display: grid; gap: 16px; }
+.sd-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.sd-head h2 { margin: 0; font-size: 20px; }
+.sd-px { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sd-px .chg { font-size: 15px; margin-left: 8px; font-weight: 600; }
+.sd-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 14px; }
+.sd-stats div { display: grid; gap: 2px; }
+.sd-stats .l { color: var(--muted); font-size: 12px; }
+.sd-stats .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+.sd h3 { margin: 0 0 6px; font-size: 14px; color: var(--text-2); }
+.sd table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+.sd th, .sd td { padding: 5px 6px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+.sd th:first-child, .sd td:first-child { text-align: left; }
+.sd th { color: var(--muted); font-weight: 500; font-size: 12px; }
+.sd-news { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sd-news a { color: var(--text); text-decoration: none; font-weight: 600; line-height: 1.35; }
+.sd-news a:hover { color: var(--series-1); }
+.sd-news .m { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.sd-news .new { color: var(--series-1); font-weight: 700; }
+.sd-close { font-size: 20px; line-height: 1; padding: 4px 10px; }
+@media (max-width: 520px) {
+  dialog.sd { width: 100%; max-width: 100%; max-height: 100%; height: 100%; margin: 0; border-radius: 0; border: none; }
+  .sd-in { padding: 14px 16px 28px; }
+  .sd-stats { grid-template-columns: repeat(2, 1fr); }
+  .sd .hide-sm { display: none; }
+  /* Holdings on a phone: narrow name column so Today fits on screen next to it */
+  #holdings td:nth-child(2), #holdings th:nth-child(2) { white-space: normal; max-width: 120px; padding-right: 4px; }
+  #holdings td:first-child, #holdings th:first-child { padding-left: 2px; padding-right: 2px; }
+  #holdings .exch { display: none; }
+  #holdings .lot-toggle { padding-right: 3px; }
+}
 table.lot-table { width: max-content; font-size: 12px; }
 table.lot-table th, table.lot-table td { padding: 5px 10px; border-bottom: 1px solid var(--grid); }
 table.lot-table th { cursor: default; }
@@ -170,6 +206,7 @@ input.incl { width: 15px; height: 15px; cursor: pointer; accent-color: var(--ser
 </style>
 </head>
 <body>
+<dialog class="sd" id="sd"></dialog>
 <main>
   <header>
     <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
@@ -218,11 +255,11 @@ input.incl { width: 15px; height: 15px; cursor: pointer; accent-color: var(--ser
         <thead><tr>
           <th title="Untick to leave a stock out of totals, charts and the plan">Incl.</th>
           <th data-k="name">Security</th>
+          <th data-k="dayPct">Today</th>
           <th data-k="shares">Shares</th>
           <th data-k="avg">Avg cost (DKK)</th>
           <th data-k="avgNative" title="Average purchase price in the stock's own currency, excl. fees (foreign stocks only). ≈ = estimated from DKK cost at today's exchange rate">Avg cost (orig.)</th>
           <th data-k="price">Price</th>
-          <th data-k="dayPct">Today</th>
           <th>Intraday</th>
           <th data-k="value">Value (DKK)</th>
           <th data-k="pl">P/L (DKK)</th>
@@ -336,6 +373,7 @@ try { openLots = new Set(JSON.parse(localStorage.getItem(KEY('openLots')) || '[]
 let excluded = new Set();
 try { excluded = new Set(JSON.parse(localStorage.getItem(KEY('excluded')) || '[]')); } catch (e) {}
 function saveExcluded() { try { localStorage.setItem(KEY('excluded'), JSON.stringify([...excluded])); } catch (e) {} }
+let details = {};
 let data = null, history = null, consensus = {}, sortKey = 'value', sortDir = -1, timer = null, lastPrices = {};
 
 // ---------- theme
@@ -462,6 +500,7 @@ async function load(withHistory) {
     renderPortfolioPicker(j);
     if (j.history) history = j.history;
     if (j.consensus) consensus = j.consensus;
+    if (j.details) details = j.details;
     if (j.signals) signals = j.signals;
     if (j.candidates) candidates = j.candidates;
     if (j.fund_candidates) fundCandidates = j.fund_candidates;
@@ -1125,12 +1164,12 @@ function renderHoldings(rs, total) {
     lastPrices[r.symbol] = q.price;
     return `<tr class="${r.excluded ? 'excluded' : ''}">
       <td><input type="checkbox" class="incl" data-n="${esc(r.name)}" ${r.excluded ? '' : 'checked'} aria-label="Include ${esc(r.name)}"></td>
-      <td>${(r.lots || []).length > 1 ? `<button class="lot-toggle" data-n="${esc(r.name)}" aria-expanded="${openLots.has(r.name)}" title="Show each purchase">${openLots.has(r.name) ? '▾' : '▸'}</button>` : ''}${esc(r.name)}<span class="sym">${esc(r.symbol)}${q.exchange ? ' · ' + esc(q.exchange) : ''}${(r.lots || []).length > 1 ? ` · ${r.lots.length} buys` : ''}</span></td>
+      <td>${(r.lots || []).length > 1 ? `<button class="lot-toggle" data-n="${esc(r.name)}" aria-expanded="${openLots.has(r.name)}" title="Show each purchase">${openLots.has(r.name) ? '▾' : '▸'}</button>` : ''}<button class="nm" data-s="${esc(r.symbol)}" title="Price details and news">${esc(r.name)}</button><span class="sym">${esc(r.symbol)}<span class="exch">${q.exchange ? ' · ' + esc(q.exchange) : ''}${(r.lots || []).length > 1 ? ` · ${r.lots.length} buys` : ''}</span></span></td>
+      <td class="${cls(r.dayPct)}">${arrow(r.dayPct)}${pct(r.dayPct)}${r.dayAbs != null ? `<span class="sym">${signed(r.dayAbs)} kr.</span>` : ''}</td>
       <td>${nf0.format(r.shares)}</td>
       <td>${r.avg != null ? nf2.format(r.avg) : '–'}</td>
       <td>${r.avgNative != null && q.currency && q.currency !== 'DKK' ? `${r.avgNativeEst ? '≈ ' : ''}${nf2.format(r.avgNative)} <span class="sym" style="display:inline">${esc(q.currency || '')}</span>` : '–'}</td>
       <td class="${flash}">${q.price != null ? nf2.format(q.price) : '–'} <span class="sym" style="display:inline">${esc(q.currency || '')}</span></td>
-      <td class="${cls(r.dayPct)}">${arrow(r.dayPct)}${pct(r.dayPct)}</td>
       <td>${spark(q.spark, q.prev_close)}</td>
       <td>${r.value != null ? nf0.format(r.value) : '–'}</td>
       <td class="${cls(r.pl)}">${signed(r.pl)}</td>
@@ -1298,6 +1337,75 @@ $('#holdings tbody').addEventListener('change', e => {
   if (!STATIC) load(true);   // re-fetch history without the excluded stocks
 });
 window.addEventListener('resize', () => { if (data) renderHistory(); });
+
+// ---------- stock detail panel: today's prices, recent daily open/close, 3-month chart, news
+function openDetail(sym) {
+  const r = rows().find(x => x.symbol === sym);
+  if (!r) return;
+  const d = details[sym], q = r.q, ccy = q.currency || '';
+  const dlg = $('#sd');
+  const c = d?.candles || [];
+  const todayIso = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Copenhagen' });
+  const lastC = c[c.length - 1];
+  const todayC = lastC && lastC[0] === todayIso ? lastC : null;
+  const stat = (l, v) => `<div><span class="l">${l}</span><span class="v">${v}</span></div>`;
+  const n2 = v => v == null ? '–' : nf2.format(v);
+  const vol = v => v == null ? '–' : v >= 1e6 ? nf2.format(v / 1e6) + ' mio.' : nf0.format(v);
+  // Recent days, newest first, with the change from the day before.
+  const recent = c.map((x, i) => ({ d: x[0], o: x[1], h: x[2], l: x[3], c: x[4], v: x[5], ch: i ? x[4] / c[i - 1][4] - 1 : null }))
+    .slice(-10).reverse();
+  const dayRows = recent.map(x => `<tr><td>${new Date(x.d).toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+    <td>${n2(x.o)}</td><td class="hide-sm">${n2(x.h)}</td><td class="hide-sm">${n2(x.l)}</td><td>${n2(x.c)}</td>
+    <td class="${cls(x.ch)}">${pct(x.ch)}</td></tr>`).join('');
+  const now = Date.now() / 1000;
+  const news = (d?.news || []).map(n => {
+    const t = new Date(n.time * 1000);
+    const fresh = now - n.time < 24 * 3600;
+    const when = t.toLocaleDateString('sv-SE', { timeZone: 'Europe/Copenhagen' }) === todayIso
+      ? 'today ' + t.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' })
+      : t.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' }) + ' ' + t.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+    return `<li><a href="${esc(n.link || '#')}" target="_blank" rel="noopener noreferrer">${esc(n.title)}</a>
+      <div class="m">${fresh ? '<span class="new">New · </span>' : ''}${esc(n.publisher || '')} · ${when}</div></li>`;
+  }).join('');
+  dlg.innerHTML = `<div class="sd-in">
+    <div class="sd-head"><div><h2>${esc(r.name)}</h2><span class="sym" style="display:block">${esc(d?.name || '')} · ${esc(sym)}${q.exchange ? ' · ' + esc(q.exchange) : ''}</span></div>
+      <button class="sd-close" aria-label="Close">×</button></div>
+    <div class="sd-px">${n2(q.price)} <span class="sym" style="display:inline">${esc(ccy)}</span>
+      <span class="chg ${cls(r.dayPct)}">${arrow(r.dayPct)}${pct(r.dayPct)}${r.dayAbs != null ? ` · ${signed(r.dayAbs)} kr.` : ''}</span></div>
+    ${d ? `<div class="sd-stats">
+      ${stat('Open', n2(todayC?.[1]))}${stat('Previous close', n2(q.prev_close))}
+      ${stat('Day high', n2(d.day_high))}${stat('Day low', n2(d.day_low))}
+      ${stat('Volume', vol(d.volume))}${stat('52-week range', `${n2(d.low52)} – ${n2(d.high52)}`)}
+      ${stat('Your shares', nf0.format(r.shares))}${stat('Your P/L', `<span class="${cls(r.pl)}">${signed(r.pl)} kr. (${pct(r.plPct)})</span>`)}
+    </div>
+    <div><h3>Last 3 months</h3><div id="sd-chart"></div></div>
+    <div><h3>Recent days (${esc(ccy)})</h3><table><thead><tr><th>Day</th><th>Open</th><th class="hide-sm">High</th><th class="hide-sm">Low</th><th>Close</th><th>Change</th></tr></thead><tbody>${dayRows}</tbody></table></div>
+    <div><h3>Latest news</h3>${news ? `<ul class="sd-news">${news}</ul>` : '<span class="sym" style="display:inline">No recent news found.</span>'}</div>`
+    : '<span class="sym" style="display:inline">Details arrive with the next update.</span>'}
+  </div>`;
+  dlg.querySelector('.sd-close').onclick = () => dlg.close();
+  dlg.showModal();
+  if (c.length > 1) drawDetailChart($('#sd-chart'), c, r.avgNative ?? (q.currency === 'DKK' ? r.avg : null));
+}
+function drawDetailChart(box, c, avg) {
+  const W = box.clientWidth || 600, H = 150, m = { l: 48, r: 8, t: 8, b: 20 };
+  const xs = c.map(x => x[4]).concat(avg ? [avg] : []);
+  const lo = Math.min(...xs), hi = Math.max(...xs), pad = (hi - lo) * 0.08 || 1;
+  const y0 = lo - pad, y1 = hi + pad;
+  const X = i => m.l + i / (c.length - 1) * (W - m.l - m.r), Y = v => m.t + (1 - (v - y0) / (y1 - y0)) * (H - m.t - m.b);
+  const up = c[c.length - 1][4] >= c[0][4];
+  let g = '';
+  for (const v of [lo, (lo + hi) / 2, hi]) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${nf2.format(v)}</text>`;
+  for (const i of [0, Math.floor((c.length - 1) / 2), c.length - 1]) g += `<text x="${X(i)}" y="${H - 4}" text-anchor="${i ? i === c.length - 1 ? 'end' : 'middle' : 'start'}" font-size="11" fill="var(--muted)">${new Date(c[i][0]).toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })}</text>`;
+  if (avg) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(avg)}" y2="${Y(avg)}" stroke="var(--series-2)" stroke-dasharray="4 3"/><text x="${W - m.r}" y="${Y(avg) - 4}" text-anchor="end" font-size="11" fill="var(--series-2)">your avg ${nf2.format(avg)}</text>`;
+  const path = c.map((x, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x[4]).toFixed(1)).join('');
+  box.innerHTML = `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}">${g}<path d="${path}" fill="none" stroke="var(${up ? '--up' : '--down'})" stroke-width="2"/></svg>`;
+}
+$('#holdings tbody').addEventListener('click', e => {
+  const b = e.target.closest('button.nm');
+  if (b) openDetail(b.dataset.s);
+});
+$('#sd').addEventListener('click', e => { if (e.target.id === 'sd') e.target.close(); });
 load(true);
 </script>
 </body>

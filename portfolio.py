@@ -248,6 +248,91 @@ def fetch_history(symbol, start):
     return out
 
 
+DETAIL_TTL = 600        # seconds daily candles for the stock detail panel are reused
+NEWS_TTL = 900          # seconds news headlines are reused
+
+
+def _yahoo_search(query, news_count):
+    key = ("search", query, news_count)
+    with _cache_lock:
+        hit = _cache.get(key)
+        if hit and time.time() - hit[0] < NEWS_TTL:
+            return hit[1]
+    url = ("https://query2.finance.yahoo.com/v1/finance/search?q=" + urllib.parse.quote(query)
+           + f"&quotesCount=1&newsCount={news_count}")
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=10) as r:
+        data = json.load(r)
+    with _cache_lock:
+        _cache[key] = (time.time(), data)
+    return data
+
+
+def _company_query(name):
+    """'NKT A/S' -> 'NKT A/S', 'Anthropic, PBC Class A Common Stock' -> 'Anthropic'."""
+    import re
+    name = re.split(r",| Class [A-Z]\b| \(", name or "")[0].strip()
+    return name
+
+
+def fetch_news(symbol, long_name=None, limit=8):
+    """Latest headlines about a stock. Yahoo finds news by ticker for US listings; for
+    European ones it needs the company name, so fall back to that."""
+    items = []
+    queries = [symbol]
+    if long_name:
+        name = _company_query(long_name)
+        bare = name.replace(" A/S", "").replace(" ASA", "").replace(" AB", "").strip()
+        folded = bare.translate(str.maketrans({"Ø": "O", "ø": "o", "Æ": "Ae", "æ": "ae", "Å": "A", "å": "a"}))
+        queries += list(dict.fromkeys([name, bare, folded]))
+    for q in queries:
+        d = _yahoo_search(q, limit + 4)
+        # Keep stories tagged with this stock (or the company's other listing that the
+        # search resolves to), so a name like "DSV" doesn't pull in another company.
+        mine = {symbol} | {x.get("symbol") for x in d.get("quotes", [])[:1] if x.get("symbol")}
+        for n in d.get("news", []):
+            rel = set(n.get("relatedTickers") or [])
+            if rel and not rel & mine:
+                continue
+            items.append({"title": n.get("title"), "publisher": n.get("publisher"),
+                          "time": n.get("providerPublishTime"), "link": n.get("link")})
+        if items:
+            break
+    seen, out = set(), []
+    for it in sorted(items, key=lambda x: -(x["time"] or 0)):
+        if it["title"] and it["title"] not in seen:
+            seen.add(it["title"]); out.append(it)
+    return out[:limit]
+
+
+def fetch_detail(symbol):
+    """Daily open/high/low/close for the last 3 months, the day's range and 52-week range."""
+    d = _yahoo_chart(symbol, "3mo", "1d", DETAIL_TTL)
+    m = d["meta"]
+    mult, ccy = _scale(m.get("currency", "DKK"))
+    q = d.get("indicators", {}).get("quote", [{}])[0]
+    rows = []
+    for i, t in enumerate(d.get("timestamp") or []):
+        o, h, l, c = (q.get(k, [None] * (i + 1))[i] for k in ("open", "high", "low", "close"))
+        if c is None:
+            continue
+        v = (q.get("volume") or [None] * (i + 1))[i]
+        sc = lambda x: round(x * mult, 4) if x is not None else None
+        rows.append([datetime.fromtimestamp(t, ZoneInfo("Europe/Copenhagen")).date().isoformat(),
+                     sc(o), sc(h), sc(l), sc(c), v])
+    name = m.get("longName") or m.get("shortName")
+    try:
+        news = fetch_news(symbol, name)
+    except Exception as e:
+        print(f"  ! news {symbol}: {e}", file=sys.stderr)
+        news = []
+    sc = lambda x: x * mult if x is not None else None
+    return {"name": name, "currency": ccy, "exchange": m.get("fullExchangeName"),
+            "day_high": sc(m.get("regularMarketDayHigh")), "day_low": sc(m.get("regularMarketDayLow")),
+            "volume": m.get("regularMarketVolume"),
+            "high52": sc(m.get("fiftyTwoWeekHigh")), "low52": sc(m.get("fiftyTwoWeekLow")),
+            "candles": rows, "news": news}
+
+
 CONSENSUS_TTL = 6 * 3600
 _yahoo_session = {"opener": None, "crumb": None}
 
@@ -405,6 +490,8 @@ def snapshot(include_history, exclude=(), pid=None):
                                           cfg.get("timing", {}).get("trailing_stop_pct"))
         with ThreadPoolExecutor(max_workers=8) as ex:
             result["consensus"] = dict(zip(symbols, ex.map(_safe(fetch_consensus), symbols)))
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            result["details"] = dict(zip(symbols, ex.map(_safe(fetch_detail), symbols)))
         result["candidates"] = build_screen(cfg.get("screen", {}), set(symbols))
         result["fund_candidates"] = build_fund_screen(cfg.get("screen", {}).get("funds", {}), set(symbols))
     return result
